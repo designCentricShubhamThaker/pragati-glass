@@ -8,34 +8,38 @@ import TeamView from "./TeamView";
 import SubteamView from "./SubteamView";
 import NotFound from "./NotFound";
 import { AuthProvider } from "./context/auth";
+import { SocketProvider } from "./context/SocketContext";
 
 const App = () => {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-         
-          <Route path="/login" element={<Login />} />
-          <Route path="/unauthorized" element={<Unaothorized />} />
-          
-          <Route path="/" element={<DynamicRedirect />} />
-          
-          <Route path="/dashboard" element={
-            <ProtectedRoute allowedRoles={['admin']} />
-          }>
-            <Route index element={<DispatcherDashboard />} />
-          </Route>
-          
-          <Route path="/:teamId" element={<ProtectedRoute />}>
-            <Route index element={<TeamView />} />
-          </Route>
-          
-          <Route path="/:teamId/:subteamId" element={<ProtectedRoute />}>
-            <Route index element={<SubteamView />} />
-          </Route>
-          
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <SocketProvider>
+          <Routes>
+
+            <Route path="/login" element={<Login />} />
+            <Route path="/unauthorized" element={<Unaothorized />} />
+
+            <Route path="/" element={<DynamicRedirect />} />
+
+            <Route path="/dashboard" element={
+              <ProtectedRoute allowedRoles={['admin']} />
+            }>
+              <Route index element={<DispatcherDashboard />} />
+            </Route>
+
+            <Route path="/:teamId" element={<ProtectedRoute />}>
+              <Route index element={<TeamView />} />
+            </Route>
+
+            <Route path="/:teamId/:subteamId" element={<ProtectedRoute />}>
+              <Route index element={<SubteamView />} />
+            </Route>
+
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </SocketProvider>
+
       </AuthProvider>
     </BrowserRouter>
   );

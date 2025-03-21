@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, X, Menu } from 'lucide-react';
 import Table from './pages/Table';
 import { useAuth } from './context/auth';
+import { FaClockRotateLeft } from "react-icons/fa6";
 
 const DispatcherDashboard = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -47,7 +48,7 @@ const DispatcherDashboard = () => {
       <div className="bg-gradient-to-b from-orange-500 to-orange-600 text-white w-64 h-full flex flex-col shadow-lg">
         <div className="flex items-center p-4 border-b border-orange-400">
           <img src="./logo.png" alt="logo" className="w-32" />
-          <button onClick={toggleSidebar} className="ml-auto p-1 rounded-full bg-orange-600 hover:bg-orange-700">
+          <button onClick={toggleSidebar} className="ml-auto p-1 rounded-full bg-[#F36821] hover:bg-orange-700">
             <X size={20} />
           </button>
         </div>
@@ -56,16 +57,17 @@ const DispatcherDashboard = () => {
             {menuItems.map((item) => (
               <li key={item.id}>
                 <button
+                  style={{ color: "black !important", fontWeight: "500" }} 
                   onClick={() => {
                     setActiveTab(item.id);
                     setMobileMenuOpen(false);
                   }}
                   className={`flex items-center py-3 px-4 w-full rounded-lg transition-all ${activeTab === item.id
-                    ? 'bg-white text-orange-600 font-bold shadow-sm'
-                    : 'text-white hover:bg-orange-400'
+                      ? 'bg-white text-orange-600 font-bold shadow-sm'
+                      : 'text-black !important hover:bg-orange-400 hover:text-white'
                     }`}
                 >
-                  <span>{item.label}</span>
+                  <span className="text-black !important">{item.label}</span>
                 </button>
               </li>
             ))}
@@ -100,7 +102,7 @@ const DispatcherDashboard = () => {
                     onClick={() => setActiveTab(item.id)}
                     className={`flex items-center py-3 px-4 w-full rounded-lg transition-all ${activeTab === item.id
                       ? 'bg-white text-orange-600 font-bold shadow-sm'
-                      : 'text-white hover:bg-orange-400'
+                      : 'text-black font-bold hover:bg-orange-400'
                       }`}
                   >
                     <span>{item.label}</span>
@@ -126,8 +128,43 @@ const DispatcherDashboard = () => {
               <span className="text-black">Welcome</span> <span className="text-orange-500">Dispatcher</span>
             </div>
           </div>
-          <div className="flex items-center">
-            <button  onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">Logout</button>
+
+          <div className="flex items-center gap-4 p-2 ">
+
+            <div className="flex items-center bg-[#A53107] text-white rounded">
+              <div className="flex items-center gap-2 px-4 py-2">
+              <img src="./pending.svg" alt="" className='w-5 -filter drop-shadow-md' />
+                <span className="font-medium">Pending</span>
+              </div>
+              <div className="border-l border-white px-4 py-2 font-bold">
+                10
+              </div>
+            </div>
+
+
+            <div className="flex items-center bg-gray-400 text-white rounded">
+              <div className="flex items-center gap-2 px-4 py-2">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M20 6L9 17L4 12"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span className="font-medium">Completed</span>
+              </div>
+              <div className="border-l border-white px-4 py-2 font-bold">
+                25
+              </div>
+            </div>
+
+            {/* Logout Button */}
+            <div className="ml-auto flex items-center text-gray-500 gap-2">
+              <svg className="w-5 h-5 transform rotate-180" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9"
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M16 17L21 12L16 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <button onClick={handleLogout} className="font-medium cursor-pointer">LOGOUT</button>
+            </div>
           </div>
         </header>
 

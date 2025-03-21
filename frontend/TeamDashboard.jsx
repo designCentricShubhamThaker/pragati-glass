@@ -3,13 +3,24 @@ import { ChevronLeft, X, Menu } from 'lucide-react';
 import { useAuth } from './context/auth';
 import { useParams, useNavigate } from 'react-router-dom';
 
-const TeamView = () => {
+const TeamDashboard = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState('liveOrders');
   const [isMobile, setIsMobile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+ 
   const { user, logout } = useAuth();
-  const navigate = useNavigate()
+  const { teamId, subteamId } = useParams();
+  const navigate = useNavigate();
+  
+  const isSubteamView = !!subteamId;
+  
+
+  const currentTeam = teamId || user?.team;
+  const currentSubteam = subteamId || user?.subteam;
 
   const handleLogout = () => {
     logout();
@@ -29,6 +40,42 @@ const TeamView = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [mobileMenuOpen]);
 
+  useEffect(() => {
+
+    const fetchOrders = async () => {
+      setLoading(true);
+      try {
+       
+        let endpoint;
+        
+        if (isSubteamView) {
+          endpoint = `/api/teams/${currentTeam}/subteams/${currentSubteam}/orders/${activeTab === 'liveOrders' ? 'live' : 'past'}`;
+        } else {
+          endpoint = `/api/teams/${currentTeam}/orders/${activeTab === 'liveOrders' ? 'live' : 'past'}`;
+        }
+        
+        console.log(`Fetching from: ${endpoint}`);
+        
+       
+        const dummyData = [
+          { id: 1, customer: 'Customer A', status: 'Pending', date: '2025-03-17' },
+          { id: 2, customer: 'Customer B', status: 'Processing', date: '2025-03-16' },
+          { id: 3, customer: 'Customer C', status: 'Completed', date: '2025-03-15' },
+        ];
+        
+      
+        setTimeout(() => {
+          setOrders(dummyData);
+          setLoading(false);
+        }, 500);
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+        setLoading(false);
+      }
+    };
+    
+    fetchOrders();
+  }, [activeTab, currentTeam, currentSubteam, isSubteamView]);
 
   const toggleSidebar = () => {
     if (isMobile) {
@@ -43,6 +90,13 @@ const TeamView = () => {
     { id: 'pastOrders', label: 'PAST ORDERS' },
   ];
 
+  const getDashboardTitle = () => {
+    if (isSubteamView) {
+      return `Subteam ${currentSubteam}`;
+    } else {
+      return `Team ${currentTeam}`;
+    }
+  };
 
   const MobileSidebar = () => (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex md:hidden">
@@ -125,7 +179,7 @@ const TeamView = () => {
               </button>
             ) : null}
             <div className="text-xl font-bold ml-2">
-              <span className="text-black">Welcome</span> <span className="text-orange-500">{user.team}-{user.subteam}</span>
+              <span className="text-black">Welcome</span> <span className="text-orange-500">{getDashboardTitle()}</span>
             </div>
           </div>
           <div className="flex items-center">
@@ -135,21 +189,25 @@ const TeamView = () => {
 
         <main className="flex-1 p-4 overflow-hidden">
           <div className="bg-white rounded-lg shadow-md p-6 h-full flex flex-col">
-            
+            {loading ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+              </div>
+            ) : (
               <>
                 {activeTab === 'liveOrders' ? (
                   <div>
                     <h2 className="text-xl font-bold mb-4">Live Orders</h2>
-
+                   
                   </div>
                 ) : (
                   <div>
                     <h2 className="text-xl font-bold mb-4">Past Orders</h2>
-
+                    
                   </div>
                 )}
               </>
-            
+            )}
           </div>
         </main>
       </div>
@@ -157,4 +215,4 @@ const TeamView = () => {
   );
 };
 
-export default TeamView;
+export default TeamDashboard;

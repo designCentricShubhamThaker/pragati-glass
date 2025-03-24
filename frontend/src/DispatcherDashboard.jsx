@@ -3,6 +3,7 @@ import { ChevronLeft, X, Menu } from 'lucide-react';
 import Table from './pages/Table';
 import { useAuth } from './context/auth';
 import { FaClockRotateLeft } from "react-icons/fa6";
+import ConnectionStatus from './pages/ConnectionStatus';
 
 const DispatcherDashboard = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -57,14 +58,14 @@ const DispatcherDashboard = () => {
             {menuItems.map((item) => (
               <li key={item.id}>
                 <button
-                  style={{ color: "black !important", fontWeight: "500" }} 
+                  style={{ color: "black !important", fontWeight: "500" }}
                   onClick={() => {
                     setActiveTab(item.id);
                     setMobileMenuOpen(false);
                   }}
                   className={`flex items-center py-3 px-4 w-full rounded-lg transition-all ${activeTab === item.id
-                      ? 'bg-white text-orange-600 font-bold shadow-sm'
-                      : 'text-black !important hover:bg-orange-400 hover:text-white'
+                    ? 'bg-white text-orange-600 font-bold shadow-sm'
+                    : 'text-black !important hover:bg-orange-400 hover:text-white'
                     }`}
                 >
                   <span className="text-black !important">{item.label}</span>
@@ -133,7 +134,7 @@ const DispatcherDashboard = () => {
 
             <div className="flex items-center bg-[#A53107] text-white rounded">
               <div className="flex items-center gap-2 px-4 py-2">
-              <img src="./pending.svg" alt="" className='w-5 -filter drop-shadow-md' />
+                <img src="./pending.svg" alt="" className='w-5 -filter drop-shadow-md' />
                 <span className="font-medium">Pending</span>
               </div>
               <div className="border-l border-white px-4 py-2 font-bold">
@@ -180,7 +181,9 @@ const DispatcherDashboard = () => {
           </div>
         </main>
       </div>
+      <ConnectionStatus />
     </div>
+
   );
 };
 

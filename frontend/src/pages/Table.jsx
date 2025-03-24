@@ -3,12 +3,12 @@ import { useTable, useGlobalFilter, useSortBy, usePagination } from 'react-table
 import { Eye, Plus, Check } from 'lucide-react';
 import { FaPencil } from "react-icons/fa6";
 import { BsFiletypeCsv } from "react-icons/bs";
-import { BsHourglassTop } from "react-icons/bs";
+import { TbTimelineEvent } from "react-icons/tb";
 import ViewDispatcherOrderDetails from '../child-components/ViewDispatcherOrderDetails';
 import axios from 'axios';
 import CreateOrder from '../child-components/CreateOrder';
-import { FaClockRotateLeft } from "react-icons/fa6";
 import { useSocket } from '../context/SocketContext';
+import OrderActivity from '../child-components/OrderActivity';
 
 function customGlobalFilter(rows, columnIds, filterValue) {
   if (filterValue === "") return rows;
@@ -30,8 +30,8 @@ const Table = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [filterInput, setFilterInput] = useState("");
-  const { socket, connected } = useSocket();
-  const [updatedOrders, setUpdatedOrders] = useState([]);
+  const { socket, connected, completedQuantities, orderHistory } = useSocket();
+  const [showTimeline, setShowTimeline] = useState(false);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -53,24 +53,25 @@ const Table = () => {
   useEffect(() => {
     if (socket && connected) {
       socket.emit('joinRoom', { role: 'dispatcher' });
-      
+
       socket.on('orderStatusUpdated', (data) => {
         console.log('Dispatcher received order status update:', data);
-        
-  
+
         setOrders(prevOrders => {
           return prevOrders.map(order => {
             if (order._id === data.orderId) {
-              const updatedOrder = { ...order };
-              
+              // Create a deep copy of the order to avoid mutating the previous state
+              const updatedOrder = JSON.parse(JSON.stringify(order));
+
               // Make sure order_details exists
               if (!updatedOrder.order_details) {
                 updatedOrder.order_details = {};
               }
-              
-              // Update the appropriate team's items based on the team type
+
+              // Only update the specific team's data
               const teamType = data.team;
-              
+
+              // Initialize the team array if it doesn't exist
               if (teamType === 'glass' && !updatedOrder.order_details.glass) {
                 updatedOrder.order_details.glass = [];
               } else if (teamType === 'caps' && !updatedOrder.order_details.caps) {
@@ -80,17 +81,21 @@ const Table = () => {
               } else if (teamType === 'pumps' && !updatedOrder.order_details.pumps) {
                 updatedOrder.order_details.pumps = [];
               }
-              
-              // Update each item in the appropriate array
+
+              // Update each item in the appropriate array without touching other teams' data
               if (data.items && data.items.length > 0) {
                 data.items.forEach(updatedItem => {
-                  // Find and update the specific item in the appropriate array
+                  const itemKey = `${data.orderId}-${updatedItem.itemId}`;
+                  const storedQuantity = completedQuantities[itemKey]?.completed || 0;
+
+                  // Find and update ONLY the specific item in the appropriate team array
                   if (teamType === 'glass' && updatedOrder.order_details.glass) {
                     const itemIndex = updatedOrder.order_details.glass.findIndex(
                       item => item._id === updatedItem.itemId
                     );
                     if (itemIndex !== -1) {
                       updatedOrder.order_details.glass[itemIndex].status = updatedItem.status;
+                      updatedOrder.order_details.glass[itemIndex].completed_quantity = storedQuantity;
                     }
                   } else if (teamType === 'caps' && updatedOrder.order_details.caps) {
                     const itemIndex = updatedOrder.order_details.caps.findIndex(
@@ -98,6 +103,7 @@ const Table = () => {
                     );
                     if (itemIndex !== -1) {
                       updatedOrder.order_details.caps[itemIndex].status = updatedItem.status;
+                      updatedOrder.order_details.caps[itemIndex].completed_quantity = storedQuantity;
                     }
                   } else if (teamType === 'boxes' && updatedOrder.order_details.boxes) {
                     const itemIndex = updatedOrder.order_details.boxes.findIndex(
@@ -105,6 +111,7 @@ const Table = () => {
                     );
                     if (itemIndex !== -1) {
                       updatedOrder.order_details.boxes[itemIndex].status = updatedItem.status;
+                      updatedOrder.order_details.boxes[itemIndex].completed_quantity = storedQuantity;
                     }
                   } else if (teamType === 'pumps' && updatedOrder.order_details.pumps) {
                     const itemIndex = updatedOrder.order_details.pumps.findIndex(
@@ -112,28 +119,116 @@ const Table = () => {
                     );
                     if (itemIndex !== -1) {
                       updatedOrder.order_details.pumps[itemIndex].status = updatedItem.status;
+                      updatedOrder.order_details.pumps[itemIndex].completed_quantity = storedQuantity;
                     }
                   }
                 });
               }
-              
+
+              // Add any history updates
+              updatedOrder.activity_history = orderHistory[order._id] || [];
+
               return updatedOrder;
             }
             return order;
           });
         });
       });
-      
+
+      // New listener for order quantity updates
+      socket.on('orderQuantityUpdate', (data) => {
+        console.log('Dispatcher received quantity update:', data);
+
+        setOrders(prevOrders => {
+          return prevOrders.map(order => {
+            if (order._id === data.orderId) {
+              // Create a deep copy to avoid mutating previous state
+              const updatedOrder = JSON.parse(JSON.stringify(order));
+
+              // Update ONLY the specific item's completed quantity for the specific team
+              const teamType = data.team;
+              
+              // Only update if the team and item exist
+              if (updatedOrder.order_details && updatedOrder.order_details[teamType]) {
+                const teamItems = updatedOrder.order_details[teamType];
+                const itemIndex = teamItems.findIndex(item => item._id === data.itemId);
+                
+                if (itemIndex !== -1) {
+                  // Only update this specific team's specific item
+                  teamItems[itemIndex].completed_quantity = data.quantity;
+                }
+              }
+
+              return updatedOrder;
+            }
+            return order;
+          });
+        });
+      });
+
+      // New listener for order history updates
+      socket.on('orderHistoryUpdate', (data) => {
+        console.log('Dispatcher received history update:', data);
+
+        setOrders(prevOrders => {
+          return prevOrders.map(order => {
+            if (order._id === data.orderId) {
+              // Create a deep copy and only update the history
+              const updatedOrder = JSON.parse(JSON.stringify(order));
+              updatedOrder.activity_history = data.history;
+              return updatedOrder;
+            }
+            return order;
+          });
+        });
+      });
+
       return () => {
         socket.off('orderStatusUpdated');
+        socket.off('orderQuantityUpdate');
+        socket.off('orderHistoryUpdate');
       };
     }
-  }, [socket, connected]);
+  }, [socket, connected, completedQuantities, orderHistory]);
+
+  
+  useEffect(() => {
+    if (orders.length > 0 && Object.keys(completedQuantities).length > 0) {
+      setOrders(prevOrders => {
+        // Create a deep copy of all orders to avoid mutation
+        return prevOrders.map(order => {
+          const updatedOrder = JSON.parse(JSON.stringify(order));
+
+          // Apply completed quantities only to the relevant items
+          if (updatedOrder.order_details) {
+            ['glass', 'caps', 'boxes', 'pumps'].forEach(teamType => {
+              const teamItems = updatedOrder.order_details[teamType] || [];
+              
+              teamItems.forEach((item, index) => {
+                const itemKey = `${order._id}-${item._id}`;
+                if (completedQuantities[itemKey]) {
+                  teamItems[index].completed_quantity = completedQuantities[itemKey].completed;
+                }
+              });
+            });
+          }
+
+          // Add history if available
+          if (orderHistory[order._id]) {
+            updatedOrder.activity_history = orderHistory[order._id];
+          }
+
+          return updatedOrder;
+        });
+      });
+    }
+  }, [orders.length, completedQuantities, orderHistory]);
 
 
   const handleClose = () => {
     setShowModal(false);
     setCreateOrder(false);
+    setShowTimeline(false);
   };
 
   const formatSimpleDate = (dateString) => {
@@ -197,7 +292,6 @@ const Table = () => {
       {value === "Done" ? (
         <Check size={18} strokeWidth={3} className="text-[#FF6900] font-bold" />
       ) : (
-        // <FaClockRotateLeft size={20} className="text-[#FF6900] font-bold" />
         <img src="./download.svg" alt="" className='w-5 filter drop-shadow-md' />
       )}
     </div>
@@ -206,6 +300,12 @@ const Table = () => {
   const handleView = (rowData) => {
     setSelectedOrder(rowData.orderDetails);
     setShowModal(true);
+  };
+
+  // Add a new handler for the history icon click
+  const handleViewHistory = (rowData) => {
+    setSelectedOrder(rowData.orderDetails);
+    setShowTimeline(true);
   };
 
   const columns = useMemo(
@@ -315,14 +415,29 @@ const Table = () => {
             Cell: StatusBadge,
             width: 80,
           },
+          {
+            Header: "History",
+            accessor: "history",
+            Cell: ({ row }) => (
+              <div className="flex justify-center">
+                <button
+                  onClick={() => handleViewHistory(row.original)}
+                  className="p-1 text-red-800"
+                >
+                  <TbTimelineEvent size={18} />
+                </button>
+              </div>
+            ),
+            width: 80,
+          }
         ],
       },
     ],
     []
   );
 
- 
-  const filterableColumns = useMemo(() => 
+
+  const filterableColumns = useMemo(() =>
     ['orderNo', 'dispatcherName', 'customerName'],
     []
   );
@@ -332,7 +447,7 @@ const Table = () => {
       columns,
       data: transformedData,
       initialState: { pageIndex: 0, pageSize: 5 },
-      globalFilter: (rows, columnIds, filterValue) => 
+      globalFilter: (rows, columnIds, filterValue) =>
         customGlobalFilter(rows, filterableColumns, filterValue),
     },
     useGlobalFilter,
@@ -425,6 +540,7 @@ const Table = () => {
                   <col style={{ width: '100px' }} />
                   <col style={{ width: '50px' }} />
                   <col style={{ width: '50px' }} />
+                  <col style={{ width: '80px' }} />
                   <col style={{ width: '80px' }} />
                   <col style={{ width: '80px' }} />
                   <col style={{ width: '80px' }} />
@@ -531,7 +647,7 @@ const Table = () => {
                 <button
                   onClick={() => gotoPage(0)}
                   disabled={!canPreviousPage}
-                  className="px-3 py-1 border border-gray-300 rounded-b-lg text-sm font-medium text-gray-700 disabled:opacity-50"
+                  className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 disabled:opacity-50"
                 >
                   {'<<'}
                 </button>
@@ -564,6 +680,7 @@ const Table = () => {
 
       {showModal && <ViewDispatcherOrderDetails orders={selectedOrder} onClose={handleClose} />}
       {createOrder && <CreateOrder onClose={handleClose} />}
+      {showTimeline && <OrderActivity onClose={handleClose} orderId={selectedOrder?._id} />}
     </div>
   );
 };

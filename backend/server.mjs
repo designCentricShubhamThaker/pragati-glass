@@ -22,6 +22,15 @@ app.get('/', (req, res) => {
   res.send('✅ Pragati Glass Order Management API is Running!');
 });
 
+
+app.get('/api/debug/connections', (req, res) => {
+  const connections = Array.from(connectedClients.values());
+  res.json({
+    count: connections.length,
+    connections: connections
+  });
+});
+
 const server = app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
 initializeSocket(server);

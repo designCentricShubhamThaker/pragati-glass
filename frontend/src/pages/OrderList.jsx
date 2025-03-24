@@ -7,14 +7,17 @@ import { BsFiletypeCsv } from "react-icons/bs";
 import EditTodaysCompletedOrder from '../child-components/EditTodaysCompletedOrder';
 
 
-import { 
-  determineTeamType, 
-  getOrderItems, 
-  getItemName, 
+import {
+  determineTeamType,
+  getOrderItems,
+  getItemName,
   getTeamTypeSpecificColumns,
-  getCellValue 
+  getCellValue
 } from '../utils/OrderUtils';
 import { useSocket } from '../context/SocketContext';
+import ConnectionStatus from './ConnectionStatus';
+
+
 
 
 const OrdersList = ({ orderType }) => {
@@ -57,13 +60,13 @@ const OrdersList = ({ orderType }) => {
 
   useEffect(() => {
     fetchOrders();
-    
+
     if (socket && connected) {
       socket.emit('joinRoom', { role: 'team', team: user.team });
-      
+
       socket.on('orderStatusUpdated', (data) => {
         console.log('Team received order update:', data);
-  
+
         // Only update orders that this team is responsible for
         if (data.team === user.team) {
           setOrders(prevOrders => {
@@ -71,19 +74,19 @@ const OrdersList = ({ orderType }) => {
               if (order._id === data.orderId) {
                 // Deep clone the order to avoid mutation issues
                 const updatedOrder = JSON.parse(JSON.stringify(order));
-                
+
                 // Update the status of items that were changed
                 data.items.forEach(updatedItem => {
                   // Get the correct array of items based on team type
                   const itemArray = getOrderItems(updatedOrder, teamType);
-                  
+
                   // Find and update the specific item
                   const itemIndex = itemArray.findIndex(item => item._id === updatedItem.itemId);
                   if (itemIndex !== -1) {
                     itemArray[itemIndex].status = updatedItem.status;
                   }
                 });
-                
+
                 return updatedOrder;
               }
               return order;
@@ -91,16 +94,16 @@ const OrdersList = ({ orderType }) => {
           });
         }
       });
-      
+
       socket.on('updateConfirmation', (data) => {
         console.log('Update confirmed:', data);
       });
-      
+
       socket.on('error', (error) => {
         console.error('Socket error:', error.message);
       });
     }
-    
+
     return () => {
       if (socket) {
         socket.off('orderStatusUpdated');
@@ -116,12 +119,12 @@ const OrdersList = ({ orderType }) => {
   }, []);
 
   const handleOrderUpdated = useCallback(() => {
-   
+
     setForceUpdate(prev => prev + 1);
   }, []);
 
- 
-const filteredOrders = useMemo(() => {
+
+  const filteredOrders = useMemo(() => {
     if (!searchTerm) return orders;
     return orders.filter(order =>
       order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -142,18 +145,18 @@ const filteredOrders = useMemo(() => {
   const getRemainingQuantity = useCallback((order, item) => {
     const itemKey = `${order._id}-${item._id}`;
     const completedData = completedQuantities[itemKey];
-    
+
     if (!completedData) return item.quantity;
-    
+
     return Math.max(0, item.quantity - completedData.completed);
   }, [completedQuantities]);
 
   const getLastUpdateTime = useCallback((order, item) => {
     const itemKey = `${order._id}-${item._id}`;
     const completedData = completedQuantities[itemKey];
-    
+
     if (!completedData) return null;
-    
+
     const date = new Date(completedData.timestamp);
     return date.toLocaleString();
   }, [completedQuantities]);
@@ -205,7 +208,7 @@ const filteredOrders = useMemo(() => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <button 
+          <button
             onClick={() => setForceUpdate(prev => prev + 1)}
             className="flex items-center gap-1 text-orange-600 hover:text-orange-800"
           >
@@ -290,15 +293,10 @@ const filteredOrders = useMemo(() => {
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-black font-semibold">
                             {item.quantity || 'N/A'}
                           </td>
-                          <td className={`px-4 py-3 whitespace-nowrap text-sm font-semibold ${
-                            isPartiallyCompleted ? 'text-orange-600' : 'text-black'
-                          }`}>
-                            {remainingQuantity}
-                            {isPartiallyCompleted && (
-                              <span className="ml-1 text-xs">
-                                ({Math.round((remainingQuantity / item.quantity) * 100)}%)
-                              </span>
-                            )}
+                          <td className={`px-4 py-3 whitespace-nowrap text-sm font-semibold ${isPartiallyCompleted ? 'text-orange-600' : 'text-black'
+                            }`}>
+                            {remainingQuantity === 0 ? 'done' : remainingQuantity}
+
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                             {lastUpdated ? lastUpdated : 'Not updated'}
@@ -310,8 +308,8 @@ const filteredOrders = useMemo(() => {
                           ))}
                           <td className="px-3 py-2 whitespace-nowrap border-r-2 border-gray-100">
                             <span className="inline-flex items-center ml-4">
-                              {remainingQuantity === 0 ? 
-                                <CheckCircle className="h-7 w-5 text-green-500" /> : 
+                              {remainingQuantity === 0 ?
+                                <CheckCircle className="h-7 w-5 text-green-500" /> :
                                 getStatusIcon(item.status)}
                             </span>
                           </td>
@@ -343,9 +341,10 @@ const filteredOrders = useMemo(() => {
         </div>
       </div>
 
-      {showModal && <EditTodaysCompletedOrder 
-        onClose={handleClose} 
-        selectedOrder={selectedOrder} 
+      <ConnectionStatus />
+      {showModal && <EditTodaysCompletedOrder
+        onClose={handleClose}
+        selectedOrder={selectedOrder}
         onOrderUpdated={handleOrderUpdated}
       />}
     </div>

@@ -1,266 +1,160 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react';
-import {
-  Clock,
-  PieChart,
-  Users,
-  Package,
-  X,
-  Check,
-  ArrowRight,
-  Filter,
-  List,
-  Grid
-} from 'lucide-react';
+import { CalendarDays, Package, Clock, Check, Filter, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 
-// Utility function to process order data
-const processOrderData = (orderData) => {
-  const timeline = [];
-  const itemDetails = {};
 
-  // Process all items in the order
-  ['glass', 'caps', 'boxes', 'pumps'].forEach(itemType => {
-    if (orderData.order_details?.[itemType]) {
-      orderData.order_details[itemType].forEach(item => {
-        const completedEntries = item.team_tracking?.completed_entries || [];
-        const itemKey = `${itemType}-${item.glass_name || item.name}`;
-
-        if (!itemDetails[itemKey]) {
-          itemDetails[itemKey] = {
-            teamType: itemType,
-            orderNumber: orderData.order_number,
-            itemName: item.glass_name || item.name,
-            decoration: item.decoration,
-            decorationNumber: item.decoration_no,
-            originalQuantity: item.quantity,
-            entries: []
-          };
-        }
-
-        completedEntries.forEach(entry => {
-          const timelineEntry = {
-            ...itemDetails[itemKey],
-            timestamp: entry.timestamp,
-            previousCompleted: completedEntries[completedEntries.indexOf(entry) - 1]?.qty_completed || 0,
-            newCompleted: entry.qty_completed,
-            change: entry.qty_completed,
-            percentComplete: Math.round((entry.qty_completed / item.quantity) * 100),
-            isComplete: item.team_tracking.total_completed_qty === item.quantity
-          };
-
-          timeline.push(timelineEntry);
-          itemDetails[itemKey].entries.push(timelineEntry);
-        });
-      });
-    }
-  });
-
-  // Sort timeline by timestamp
-  return {
-    timeline: timeline.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)),
-    itemDetails: Object.values(itemDetails)
-  };
-};
 
 const OrderActivity = ({ onClose, orderData }) => {
-  const [processedData, setProcessedData] = useState({ timeline: [], itemDetails: [] });
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedTeam, setSelectedTeam] = useState('all');
-  const [viewMode, setViewMode] = useState('timeline');
-  const [currentDateIndex, setCurrentDateIndex] = useState(0);
+  const [selectedItem, setSelectedItem] = useState('all');
+  const [expandedSections, setExpandedSections] = useState({});
 
-  useEffect(() => {
-    if (orderData) {
-      const processed = processOrderData(orderData);
-      setProcessedData(processed);
-      setIsLoading(false);
-    }
-  }, [orderData]);
 
-  // Define local variables from processedData to fix potential undefined references
-  const { timeline = [], itemDetails = [] } = processedData;
+  const formatTimestamp = (timestamp) => {
+    try {
+      if (!timestamp) return 'N/A';
+      // Handle MongoDB timestamp format ($date.$numberLong)
+      const timeMs = typeof timestamp === 'object' && timestamp.$date && timestamp.$date.$numberLong
+        ? parseInt(timestamp.$date.$numberLong)
+        : new Date(timestamp).getTime();
 
-  const filteredTimeline = selectedTeam === 'all'
-    ? timeline
-    : timeline.filter(entry => entry.teamType === selectedTeam);
+      if (isNaN(timeMs)) return 'N/A';
 
-  const groupedByDate = filteredTimeline.reduce((acc, entry) => {
-    const date = new Date(entry.timestamp).toISOString().split('T')[0];
-    if (!acc[date]) {
-      acc[date] = [];
-    }
-    acc[date].push(entry);
-    return acc;
-  }, {});
-
-  const dateKeys = Object.keys(groupedByDate).sort((a, b) =>
-    new Date(b) - new Date(a)
-  );
-
-  const teams = [...new Set(timeline.map(entry => entry.teamType))];
-
-  const getTeamIcon = (teamType, size = 18) => {
-    switch (teamType) {
-      case 'glass':
-        return <PieChart size={size} className="text-blue-500" />;
-      case 'caps':
-        return <Clock size={size} className="text-green-500" />;
-      case 'boxes':
-        return <Package size={size} className="text-amber-500" />;
-      case 'pumps':
-        return <Users size={size} className="text-purple-500" />;
-      default:
-        return <Users size={size} className="text-gray-500" />;
+      const date = new Date(timeMs);
+      return `${date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      })} • ${date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit'
+      })}`;
+    } catch (error) {
+      return 'N/A';
     }
   };
 
-  const getTeamDisplayName = (teamType) => {
-    const teamNames = {
-      'glass': 'Glass Manufacturing',
-      'caps': 'Caps Team',
-      'boxes': 'Packaging Team',
-      'pumps': 'Pumps Team'
+  const toggleSection = (id) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
+
+  const parseIntFromMongo = (value) => {
+    if (!value) return 0;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'object' && value.$numberInt) {
+      return parseInt(value.$numberInt);
+    }
+    return 0;
+  };
+
+  // Filter items based on selection
+  const getFilteredItems = () => {
+    const { order_details } = orderData;
+    let items = [];
+
+    if (selectedItem === 'all' || selectedItem === 'glass') {
+      items = [
+        ...items,
+        ...(order_details.glass || []).map(item => ({
+          ...item,
+          type: 'glass',
+          display_name: `${item.glass_name} (${item.weight}, ${item.neck_size})`,
+          quantity: parseIntFromMongo(item.quantity),
+          completed_qty: parseIntFromMongo(item.team_tracking?.total_completed_qty)
+        }))
+      ];
+    }
+
+    if (selectedItem === 'all' || selectedItem === 'caps') {
+      items = [
+        ...items,
+        ...(order_details.caps || []).map(item => ({
+          ...item,
+          type: 'caps',
+          display_name: `${item.cap_name} (${item.process}, ${item.material})`,
+          quantity: parseIntFromMongo(item.quantity),
+          completed_qty: parseIntFromMongo(item.team_tracking?.total_completed_qty)
+        }))
+      ];
+    }
+
+    if (selectedItem === 'all' || selectedItem === 'boxes') {
+      items = [
+        ...items,
+        ...(order_details.boxes || []).map(item => ({
+          ...item,
+          type: 'boxes',
+          display_name: `${item.box_name} (Code: ${item.approval_code})`,
+          quantity: parseIntFromMongo(item.quantity),
+          completed_qty: parseIntFromMongo(item.team_tracking?.total_completed_qty)
+        }))
+      ];
+    }
+
+    if (selectedItem === 'all' || selectedItem === 'pumps') {
+      items = [
+        ...items,
+        ...(order_details.pumps || []).map(item => ({
+          ...item,
+          type: 'pumps',
+          display_name: `${item.pump_name} (${item.neck_type})`,
+          quantity: parseIntFromMongo(item.quantity),
+          completed_qty: parseIntFromMongo(item.team_tracking?.total_completed_qty)
+        }))
+      ];
+    }
+
+    return items;
+  };
+
+  const calculateProgress = (item) => {
+    if (!item.quantity || !item.completed_qty) return 0;
+    return Math.min(100, Math.floor((item.completed_qty / item.quantity) * 100));
+  };
+
+  const parseCompletedEntry = (entry) => {
+    if (!entry) return { qty: 0, time: null };
+    return {
+      qty: parseIntFromMongo(entry.qty_completed),
+      time: entry.timestamp
     };
-    return teamNames[teamType] || 'Unknown Team';
   };
 
-  const formatTime = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  // Get an item's icon based on type
+  const getItemIcon = (type) => {
+    switch (type) {
+      case 'glass':
+        return <Package size={20} />;
+      case 'caps':
+        return <Package size={20} />;
+      case 'boxes':
+        return <Package size={20} />;
+      case 'pumps':
+        return <Package size={20} />;
+      default:
+        return <Package size={20} />;
+    }
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+  // Get status badge color
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Completed':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'In Progress':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'Pending':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
   };
 
-  const formatRelativeTime = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now - date) / 1000);
-
-    if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    if (diffInSeconds < 172800) return 'Yesterday';
-
-    return formatDate(dateString);
-  };
-
-  const renderCardView = () => {
-    const filteredItems = processedData.itemDetails.filter(
-      item => selectedTeam === 'all' || item.teamType === selectedTeam
-    );
-
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
-        {filteredItems.map((item, index) => (
-          <div
-            key={index}
-            className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden transition-all hover:shadow-xl"
-          >
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center space-x-3">
-                  {getTeamIcon(item.teamType, 24)}
-                  <h3 className="text-lg font-semibold text-gray-800">{item.itemName}</h3>
-                </div>
-                <span className="bg-[#FF6900]/10 text-[#FF6900] px-3 py-1 rounded-full text-xs font-medium">
-                  {item.orderNumber}
-                </span>
-              </div>
-
-              <div className="mb-4">
-                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                  <div
-                    className="bg-[#FF6900] h-3 rounded-full transition-all duration-500 ease-in-out"
-                    style={{
-                      width: `${item.entries.length > 0
-                        ? item.entries[item.entries.length - 1].percentComplete
-                        : 0
-                        }%`
-                    }}
-                  ></div>
-                </div>
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>0</span>
-                  <span>{item.originalQuantity} units</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div>
-                  <span className="block text-xs font-medium text-gray-500 mb-1">Decoration</span>
-                  <span className="text-sm font-medium text-gray-900">
-                    {item.decoration || 'N/A'} {item.decorationNumber && `- ${item.decorationNumber}`}
-                  </span>
-                </div>
-                <div>
-                  <span className="block text-xs font-medium text-gray-500 mb-1">Team</span>
-                  <span className="text-sm font-medium text-gray-900">
-                    {getTeamDisplayName(item.teamType)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                {item.entries.slice(-3).map((entry, entryIndex) => (
-                  <div
-                    key={entryIndex}
-                    className="bg-gray-50 rounded-md p-3 flex justify-between items-center"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <Clock size={16} className="text-gray-500" />
-                      <span className="text-xs text-gray-600">
-                        {formatTime(entry.timestamp)}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xs text-gray-500">{entry.previousCompleted}</span>
-                      <ArrowRight size={12} className="text-gray-400" />
-                      <span className="text-sm font-medium text-gray-900">{entry.newCompleted}</span>
-                      <span className="ml-2 px-2 py-0.5 bg-[#FF6900]/10 text-[#FF6900] text-xs font-medium rounded">
-                        +{entry.change}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-4 flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-500">
-                  {item.entries.length > 0
-                    ? item.entries[item.entries.length - 1].percentComplete
-                    : 0}% Complete
-                </span>
-                {item.entries.length > 0 && item.entries[item.entries.length - 1].isComplete ? (
-                  <div className="flex items-center text-green-600">
-                    <Check size={16} className="mr-1" />
-                    <span className="text-sm font-medium">Completed</span>
-                  </div>
-                ) : (
-                  <span className="text-sm text-gray-500">
-                    {item.originalQuantity - (item.entries[item.entries.length - 1]?.newCompleted || 0)} remaining
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  // Ensure safety for currentDate
-  const currentDate = dateKeys[currentDateIndex] || '';
+  
+  const filteredItems = getFilteredItems();
 
   return (
     <Dialog open={true} onClose={onClose} className="relative z-20">
@@ -271,207 +165,425 @@ const OrderActivity = ({ onClose, orderData }) => {
       <div className="fixed inset-0 z-20 w-screen overflow-y-auto">
         <div className="flex min-h-full items-center justify-center p-4">
           <DialogPanel
-            className="relative transform rounded-lg bg-white text-left shadow-xl transition-all w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col"
+            className="relative transform rounded-lg p-4 bg-white text-left shadow-xl transition-all w-full max-w-6xl max-h-[90vh] overflow-y-auto flex flex-col"
           >
-            {/* Header with view mode toggle */}
-            <div className="flex items-center justify-between bg-[#FF6900] px-6 py-4">
-              <DialogTitle as="h3" className="text-xl font-semibold text-white flex items-center">
-                <Clock className="mr-2" size={20} />
-                Order Activity
-              </DialogTitle>
-              <div className="flex items-center space-x-4">
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setViewMode('timeline')}
-                    className={`p-2 rounded-md transition-colors ${viewMode === 'timeline'
-                      ? 'bg-white/20 text-white'
-                      : 'text-white/70 hover:bg-white/10'
-                      }`}
-                  >
-                    <List size={18} />
-                  </button>
-                  <button
-                    onClick={() => setViewMode('cards')}
-                    className={`p-2 rounded-md transition-colors ${viewMode === 'cards'
-                      ? 'bg-white/20 text-white'
-                      : 'text-white/70 hover:bg-white/10'
-                      }`}
-                  >
-                    <Grid size={18} />
-                  </button>
+
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-2xl font-bold text-gray-800">Order #{orderData.order_number}</h2>
+                  <div className={`px-3 py-1 rounded-full text-sm font-medium ${orderData.order_status === 'Completed' ? 'bg-green-100 text-green-800' :
+                    orderData.order_status === 'Pending' ? 'bg-orange-100 text-orange-800' :
+                      'bg-blue-100 text-blue-800'
+                    }`}>
+                    {orderData.order_status}
+                  </div>
                 </div>
-                <button
-                  onClick={onClose}
-                  className="text-white hover:text-gray-200 transition-colors"
+              </div>
+
+              <div className="flex items-center bg-gray-100 rounded-md p-1">
+                <Filter size={16} className="ml-2 text-gray-500" />
+                <select
+                  className="bg-transparent py-2 pl-2 pr-8 rounded-md border-0 text-gray-500 focus:ring-0 text-sm"
+                  value={selectedItem}
+                  onChange={(e) => setSelectedItem(e.target.value)}
                 >
-                  <X size={24} />
-                </button>
+                  <option value="all">All Items</option>
+                  <option value="glass">Glass</option>
+                  <option value="caps">Caps</option>
+                  <option value="boxes">Boxes</option>
+                  <option value="pumps">Pumps</option>
+                </select>
               </div>
             </div>
 
-            {/* Filter Bar */}
-            <div className="px-6 py-3 bg-gray-50 border-b sticky top-0 z-10">
-              <div className="flex items-center justify-between">
-                <div className="flex flex-wrap gap-2 items-center">
-                  <Filter size={16} className="text-gray-500 mr-1" />
-                  <span className="text-sm font-medium text-gray-700 mr-3">Filter by team:</span>
-                  <button
-                    onClick={() => setSelectedTeam('all')}
-                    className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${selectedTeam === 'all'
-                        ? 'bg-[#FF6900] text-white border-[#FF6900]'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                      }`}
+            <div className="mb-8 px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
+              <h3 className="text-lg font-medium text-gray-700 mb-2">Order Progress Summary</h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {['glass', 'caps', 'boxes', 'pumps'].map(type => {
+                  const items = orderData.order_details[type] || [];
+                  const totalQuantity = items.reduce((sum, item) => sum + parseIntFromMongo(item.quantity), 0);
+                  const completedQuantity = items.reduce((sum, item) => sum + parseIntFromMongo(item.team_tracking?.total_completed_qty || 0), 0);
+                  const progress = totalQuantity ? Math.floor((completedQuantity / totalQuantity) * 100) : 0;
+
+                  return (
+                    <div key={type} className="bg-white p-3 rounded-md border border-gray-200 shadow-sm">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium capitalize">{type}</span>
+                        <span className="text-xs px-2 py-1 rounded-full bg-gray-100">{items.length} items</span>
+                      </div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${progress === 100 ? 'bg-green-500' : progress > 0 ? 'bg-blue-500' : 'bg-gray-300'
+                              }`}
+                            style={{ width: `${progress}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm font-medium whitespace-nowrap">
+                          {progress}%
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {completedQuantity.toLocaleString()} / {totalQuantity.toLocaleString()} units
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="space-y-4">
+              {filteredItems.length > 0 ? filteredItems.map((item, index) => {
+                const itemId = `${item.type}-${index}`;
+                const isExpanded = expandedSections[itemId] || false;
+                const progress = calculateProgress(item);
+                const entries = item.team_tracking?.completed_entries || [];
+                const isCompleted = item.team_tracking?.status === 'Completed';
+
+                const processedEntries = entries.map(parseCompletedEntry)
+                  .filter(entry => entry.qty > 0)
+                  .sort((a, b) => {
+
+                    const getTimeValue = (timestamp) => {
+                      if (!timestamp) return 0;
+                      if (typeof timestamp === 'object' && timestamp.$date && timestamp.$date.$numberLong) {
+                        return parseInt(timestamp.$date.$numberLong);
+                      }
+                      return new Date(timestamp).getTime();
+                    };
+
+                    return getTimeValue(a.time) - getTimeValue(b.time);
+                  });
+
+                let cumulativeEntries = [];
+                let runningTotal = 0;
+
+                processedEntries.forEach((entry, idx) => {
+                  runningTotal += entry.qty;
+                  const entryProgress = Math.min(100, Math.floor((runningTotal / item.quantity) * 100));
+
+                  cumulativeEntries.push({
+                    ...entry,
+                    cumulativeQty: runningTotal,
+                    progress: entryProgress,
+                    isCompleted: runningTotal >= item.quantity,
+                    remainingUnits: Math.max(0, item.quantity - runningTotal)
+                  });
+                });
+
+                let productionRate = null;
+                if (processedEntries.length >= 2) {
+                  const latest = processedEntries[processedEntries.length - 1];
+                  const previous = processedEntries[processedEntries.length - 2];
+
+                  const getTimeValue = (timestamp) => {
+                    if (!timestamp) return 0;
+                    if (typeof timestamp === 'object' && timestamp.$date && timestamp.$date.$numberLong) {
+                      return parseInt(timestamp.$date.$numberLong);
+                    }
+                    return new Date(timestamp).getTime();
+                  };
+
+                  const timeDiff = (getTimeValue(latest.time) - getTimeValue(previous.time)) / (1000 * 60 * 60); // hours
+                  if (timeDiff > 0) {
+                    productionRate = Math.round(latest.qty / timeDiff);
+                  }
+                }
+
+                const getProductionStateText = () => {
+                  if (isCompleted) return "Production complete";
+                  if (processedEntries.length === 0) return "Production not started";
+                  return "Production in progress";
+                };
+
+                return (
+                  <div
+                    key={itemId}
+                    className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200"
                   >
-                    All Teams
-                  </button>
-                  {teams.map(team => (
-                    <button
-                      key={team}
-                      onClick={() => setSelectedTeam(team)}
-                      className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors flex items-center ${selectedTeam === team
-                          ? 'bg-[#FF6900] text-white border-[#FF6900]'
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    <div
+                      className={`px-4 py-4 flex items-center justify-between cursor-pointer transition-colors duration-200 ${isExpanded ? 'bg-gray-100' : 'bg-gray-50 hover:bg-gray-100'
                         }`}
+                      onClick={() => toggleSection(itemId)}
                     >
-                      {getTeamIcon(team)}
-                      <span className="ml-2">{getTeamDisplayName(team)}</span>
-                      <span className={`ml-2 px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-800`}>
-                        {timeline.filter(entry => entry.teamType === team).length}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+                      <div className="flex items-start">
+                        <div className={`p-2 rounded-md mr-3 ${item.type === 'glass' ? 'bg-orange-100 text-orange-600' :
+                          item.type === 'caps' ? 'bg-blue-100 text-blue-600' :
+                            item.type === 'boxes' ? 'bg-green-100 text-green-600' :
+                              'bg-purple-100 text-purple-600'
+                          }`}>
+                          {getItemIcon(item.type)}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-800">{item.display_name}</h3>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            <span className="text-sm bg-gray-100 px-2 py-1 rounded text-gray-700">
+                              Qty: {item.quantity.toLocaleString()}
+                            </span>
+                            {item.decoration && (
+                              <span className="text-sm bg-gray-100 px-2 py-1 rounded text-gray-700">
+                                {item.decoration} ({item.decoration_no})
+                              </span>
+                            )}
+                            {item.team && (
+                              <span className="text-sm bg-gray-100 px-2 py-1 rounded text-gray-700">
+                                Team: {item.team}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
 
-            {/* Content Area */}
-            <div className="flex-1 overflow-auto bg-gray-50">
-              {isLoading ? (
-                <div className="flex justify-center items-center h-64">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF6900]"></div>
-                </div>
-              ) : timeline.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-lg shadow-sm">
-                  <Clock className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-lg font-medium text-gray-900">No activity found</h3>
-                  <p className="mt-1 text-sm text-gray-500">There is no recorded activity for this order yet.</p>
-                </div>
-              ) : (
-                <>
-                  {viewMode === 'timeline' && (
-                    <div className="space-y-8">
-                      {(currentDate ? [currentDate] : dateKeys).map(date => (
-                        <div key={date} className="relative">
-                          <div className="ml-6 relative border-l-2 border-gray-200 pl-8 space-y-6">
-                            {groupedByDate[date].map((entry, entryIndex) => (
-                              <div key={`${entry.timestamp}-${entryIndex}`} className="relative">
-                                <div className="absolute w-4 h-4 bg-[#FF6900] rounded-full -left-[2.9rem] top-6 border-4 border-white shadow-sm"></div>
+                      <div className="flex items-center gap-4">
+                        <div className="hidden sm:block">
+                          <div className="flex items-center gap-2">
+                            <div className="w-32 h-3 bg-[#FFF0E7] rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${isCompleted ? 'bg-green-500' :
+                                  progress > 0 ? 'bg-blue-500' : 'bg-gray-300'
+                                  }`}
+                                style={{ width: `${progress}%` }}
+                              ></div>
+                            </div>
+                            <span className={`text-sm font-medium ${isCompleted ? 'text-green-600' :
+                              progress > 0 ? 'text-blue-600' : 'text-gray-600'
+                              }`}>
+                              {progress}%
+                            </span>
+                          </div>
+                          <div className="flex items-center mt-1">
+                            <span className={`text-xs px-2 py-0.5 rounded-full border ${getStatusColor(item.team_tracking?.status)
+                              }`}>
+                              {getProductionStateText()}
+                            </span>
+                            {isCompleted && (
+                              <span className="text-xs text-green-600 flex items-center ml-2">
+                                <Check size={12} className="mr-1" /> Done
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className={`p-1 rounded-full ${isExpanded ? 'bg-gray-200' : 'bg-gray-100'}`}>
+                          {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                        </div>
+                      </div>
+                    </div>
 
-                                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                                  <div className="px-6 py-4 border-b border-gray-100">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center">
-                                        {getTeamIcon(entry.teamType, 16)}
-                                        <span className="ml-2 text-sm font-medium text-gray-700">
-                                          {getTeamDisplayName(entry.teamType)}
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center space-x-2">
-                                        <span className="text-sm text-gray-500">
-                                          {formatTime(entry.timestamp)}
-                                        </span>
-                                        <span className="text-xs text-gray-500">
-                                          {formatRelativeTime(entry.timestamp)}
-                                        </span>
-                                      </div>
+                    {isExpanded && (
+                      <div className="p-4 bg-white border-t border-gray-200">
+                        <div className="sm:hidden mb-4">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${isCompleted ? 'bg-green-500' :
+                                  progress > 0 ? 'bg-blue-500' : 'bg-gray-300'
+                                  }`}
+                                style={{ width: `${progress}%` }}
+                              ></div>
+                            </div>
+                            <span className={`text-sm font-medium ${isCompleted ? 'text-green-600' :
+                              progress > 0 ? 'text-blue-600' : 'text-gray-600'
+                              }`}>
+                              {progress}%
+                            </span>
+                          </div>
+                          <div className="flex items-center mt-1">
+                            <span className={`text-xs px-2 py-0.5 rounded-full border ${getStatusColor(item.team_tracking?.status)
+                              }`}>
+                              {getProductionStateText()}
+                            </span>
+                          </div>
+                        </div>
+                        {processedEntries.length > 0 && (
+                          <div className="mb-4 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                            <h4 className="text-md font-semibold text-black mb-1">Production Info</h4>
+                            <div className="flex items-center gap-4">
+                              {productionRate && (
+                                <div>
+                                  <div className="text-sm font-semibold text-[#9c3900]">Production Rate</div>
+                                  <div className="text-lg font-semibold text-[#6A7283]">{productionRate} units/hr</div>
+                                </div>
+                              )}
+                              <div>
+                                <div className="text-sm font-semibold text-[#9c3900]">Completed</div>
+                                <div className="text-lg font-semibold text-[#6A7283]">
+                                  {item.completed_qty.toLocaleString()} / {item.quantity.toLocaleString()}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="border-l-2 border-[#F54A00] pl-6 ml-4 relative">
+                          {cumulativeEntries.length > 0 ? (
+                            cumulativeEntries.map((entry, entryIndex) => {
+                              const isFirst = entryIndex === 0;
+                              const isComplete = entry.cumulativeQty >= item.quantity;
+                              const hasMoreEntries = entryIndex < cumulativeEntries.length - 1;
+
+                              const cardBgColor = isComplete ? 'bg-[#F3F9EF] border-[#639E3C]' :
+                                isFirst ? 'bg-[#FFF1E7] border-[#F54A00]' :
+                                  'bg-[#FFF1E7] border-[#F54A00]';
+
+                              const dotColor = isComplete ? 'bg-[#639E3C]' : 'bg-[#F54A00]';
+
+                              const statusBadgeColor = isComplete ?
+                                'bg-[#E8F5E2] text-[#639E3C] border border-[#639E3C]' :
+                                'bg-[#FFF1E7] text-[#F54A00] border border-[#F54A00]';
+
+                              const statusText = isComplete ? 'completed' : (isFirst ? 'started' : 'added');
+                              const messageTextStyle = isComplete ? 'text-[#639E3C] font-medium' :
+                                'text-[#F54A00] font-medium';
+
+                              const progressBarColor = isComplete ? 'bg-green-800' : 'bg-[#F54A00]';
+
+                              return (
+                                <div key={entryIndex} className="mb-6 relative">
+                                  <div className={`absolute -left-8 mt-1 w-4 h-4 rounded-full ${dotColor} border-1 border-white shadow-sm`}></div>
+
+                                  <div className={`rounded-lg p-4 border ${cardBgColor} shadow-sm`}>
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                                      <span className="text-sm text-[#9F0F12] flex items-center font-medium">
+                                        <CalendarDays size={16} className="mr-2 text-[#9F0F12]" />
+                                        {formatTimestamp(entry.time)}
+                                       
+                                      </span>
+                                      <span className={`px-3 py-1 text-sm font-semibold rounded-full inline-flex items-center ${statusBadgeColor}`}>
+                                        {isComplete && <Check size={12} className="mr-1 text-[#639E3C]" />}
+                                        {entry.qty.toLocaleString()} units {statusText}
+                                      </span>
                                     </div>
-                                  </div>
 
-                                  <div className="p-5">
-                                    <div className="grid grid-cols-2 gap-4 mb-4">
-                                      <div>
-                                        <span className="block text-xs font-medium text-gray-500 mb-1">Order Number</span>
-                                        <span className="text-sm font-medium text-gray-900">{entry.orderNumber}</span>
-                                      </div>
-                                      <div>
-                                        <span className="block text-xs font-medium text-gray-500 mb-1">Item</span>
-                                        <span className="text-sm font-medium text-gray-900">{entry.itemName}</span>
-                                      </div>
-                                      <div>
-                                        <span className="block text-xs font-medium text-gray-500 mb-1">Decoration</span>
-                                        <span className="text-sm font-medium text-gray-900">
-                                          {entry.decoration} - {entry.decorationNumber}
-                                        </span>
-                                      </div>
+                                    <div className="mb-3">
+                                      <p className={`text-sm ${messageTextStyle}`}>
+                                        {isFirst ? (
+                                          <span>Started production with initial batch.</span>
+                                        ) : isComplete ? (
+                                          <span className="text-green-800 font-semibold">
+                                            Completed full production run. All units finished.
+                                          </span>
+                                        ) : (
+                                          <span>
+                                            Production batch completed. {entry.remainingUnits > 0 ?
+                                              `${entry.remainingUnits.toLocaleString()} units remaining.` :
+                                              ''}
+                                          </span>
+                                        )}
+                                      </p>
                                     </div>
 
-                                    <div>
-                                      <div className="flex items-center justify-between mb-2">
-                                        <span className="text-xs font-medium text-gray-500">Progress Update</span>
-                                        <div className="flex items-center">
-                                          <span className="text-sm font-medium text-gray-500">{entry.previousCompleted}</span>
-                                          <ArrowRight size={14} className="mx-1.5 text-gray-400" />
-                                          <span className="text-sm font-medium text-gray-900">{entry.newCompleted}</span>
-                                          <span className="ml-2 px-2 py-0.5 bg-[#FF6900]/10 text-[#FF6900] text-xs font-medium rounded">
-                                            +{entry.change} units
+                                    <div className="flex justify-between items-center">
+                                      <div>
+                                        <div className="text-xs text-[#666666] font-medium mb-1">Progress at this point</div>
+                                        <div className="flex items-center gap-2">
+                                          <div className="w-28 h-3 bg-[#FFCCA5] rounded-full overflow-hidden shadow-inner">
+                                            <div
+                                              className={`h-full rounded-full ${progressBarColor}`}
+                                              style={{ width: `${entry.progress}%` }}
+                                            ></div>
+                                          </div>
+                                          <span className="text-sm font-semibold text-[#9F0F12]">
+                                            {entry.progress}% ({entry.cumulativeQty.toLocaleString()} of {item.quantity.toLocaleString()})
                                           </span>
                                         </div>
                                       </div>
 
-                                      <div className="mt-1 mb-1">
-                                        <div className="w-full bg-gray-200 rounded-full h-2.5">
-                                          <div
-                                            className="bg-[#FF6900] h-2.5 rounded-full"
-                                            style={{ width: `${entry.percentComplete}%` }}
-                                          ></div>
-                                        </div>
-                                      </div>
-
-                                      <div className="flex justify-between items-center text-xs">
-                                        <div className="flex items-center gap-1.5">
-                                          <span className="font-medium">{entry.percentComplete}%</span>
-                                          <span className="text-gray-500">of {entry.originalQuantity} units</span>
-                                        </div>
-                                        {entry.isComplete ? (
-                                          <div className="flex items-center text-green-600">
-                                            <Check size={14} className="mr-1" />
-                                            <span className="font-medium">Completed</span>
-                                          </div>
-                                        ) : (
-                                          <div className="text-gray-500">
-                                            {entry.originalQuantity - entry.newCompleted} remaining
-                                          </div>
-                                        )}
-                                      </div>
+                                      {isComplete && (
+                                        <span className="flex items-center text-green-800 text-sm font-bold">
+                                           Production Complete
+                                        </span>
+                                      )}
                                     </div>
+
+                                    {hasMoreEntries && (
+                                      <div className="mt-3 text-right text-sm font-medium text-red-800">
+                                        Time to next entry: {(() => {
+                                          const current = new Date(typeof entry.time === 'object' && entry.time.$date ?
+                                            parseInt(entry.time.$date.$numberLong) : entry.time).getTime();
+                                          const next = new Date(typeof cumulativeEntries[entryIndex + 1].time === 'object' &&
+                                            cumulativeEntries[entryIndex + 1].time.$date ?
+                                            parseInt(cumulativeEntries[entryIndex + 1].time.$date.$numberLong) :
+                                            cumulativeEntries[entryIndex + 1].time).getTime();
+
+                                          const diffMs = next - current;
+                                          const diffMins = Math.floor(Math.abs(diffMs) / (1000 * 60));
+                                          const diffHours = Math.floor(diffMins / 60);
+                                          const remainingMins = diffMins % 60;
+
+                                          if (diffHours > 0) {
+                                            return `${diffHours}h ${remainingMins}m`;
+                                          }
+                                          return `${diffMins}m`;
+                                        })()}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
+                              );
+                            })
+                          ) : (
+                            <div className="mb-6 relative">
+                              <div className="absolute -left-8 mt-1 w-4 h-4 rounded-full bg-[#999999] border-2 border-white shadow-sm"></div>
+                              <div className="bg-[#FFF8F3] rounded-lg p-4 border-2 border-[#FFCCA5] shadow-sm">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm text-[#666666] flex items-center font-medium">
+                                    <Clock size={16} className="mr-2 text-[#F54A00]" />
+                                    Pending
+                                  </span>
+                                  <span className="px-3 py-1 bg-[#FFF1E7] text-[#F54A00] text-xs font-semibold rounded-full border border-[#F54A00]">
+                                    Not started
+                                  </span>
+                                </div>
+                                <p className="text-sm text-[#666666] flex items-center">
+                                  <AlertTriangle size={16} className="mr-2 text-[#F54A00]" />
+                                  Production has not been started. {item.quantity.toLocaleString()} units pending.
+                                </p>
                               </div>
-                            ))}
-                          </div>
+                            </div>
+                          )}
+
+                          {cumulativeEntries.length > 0 && !isCompleted && (
+                            <div className="mb-6 relative">
+                              <div className="absolute -left-8 mt-1 w-4 h-4 rounded-full bg-[#999999] border-4 border-white shadow-sm"></div>
+                              <div className="bg-[#FFF8F3] rounded-lg p-4 border-2 border-dashed border-[#FFCCA5] shadow-sm">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm text-[#333333] font-medium">Upcoming</span>
+                                  <span className="px-3 py-1 bg-[#FFF1E7] text-[#F54A00] text-xs font-semibold rounded-full border border-[#F54A00]">
+                                    {(item.quantity - item.completed_qty).toLocaleString()} more units
+                                  </span>
+                                </div>
+                                <p className="text-sm text-[#333333] font-medium">
+                                  {item.quantity > item.completed_qty ?
+                                    `${((item.quantity - item.completed_qty) / item.quantity * 100).toFixed(1)}% of production remaining.` :
+                                    'All units have been produced. Awaiting final verification.'}
+                                </p>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                  {viewMode === 'cards' && renderCardView()}
-                </>
+
+                        {item.notes && (
+                          <div className="mt-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                            <h4 className="text-sm font-medium text-gray-700 mb-1">Production Notes</h4>
+                            <p className="text-sm text-gray-600">{item.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              }) : (
+                <div className="text-center py-8 px-4 bg-gray-50 rounded--lg border border-gray-200">
+                  <p className="text-gray-600">No items found matching the selected filter.</p>
+                </div>
               )}
             </div>
 
-            {/* Footer */}
-            <div className="px-6 py-4 bg-gray-50 border-t flex justify-end">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors font-medium"
-              >
-                Close
-              </button>
-            </div>
           </DialogPanel>
         </div>
       </div>
     </Dialog>
   );
-};
+}
 
 export default OrderActivity;

@@ -30,6 +30,24 @@ function ViewDispatcherOrderDetails({ onClose, orders }) {
     return totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
   };
 
+  const StatusBadge = ({ value }) => {
+    // If value is undefined, null, or "Pending", show as "Pending"
+    const status = value || "Pending";
+    
+    return (
+      <div className="flex items-center">
+        
+        <div className="ml-2 flex justify-center">
+          {status === "Completed" ? (
+            <Check size={18} strokeWidth={3} className="text-[#FF6900] font-bold" />
+          ) : (
+            <img src="./download.svg" alt="" className="w-5 filter drop-shadow-md" />
+          )}
+        </div>
+      </div>
+    );
+  };
+  
   const formatDate = (dateString) => {
     try {
       const options = { year: 'numeric', month: 'short', day: 'numeric' };
@@ -83,34 +101,34 @@ function ViewDispatcherOrderDetails({ onClose, orders }) {
     }
   };
 
-  const completionPercentage = calculateCompletion(orders.order_details);
-
-  // Unified table component that handles rendering for all item types
   const OrderItemTable = ({ title, items, fields }) => {
     if (!items || !items.length) return null;
 
     return (
       <div className="mt-4">
-        <h4 className="font-medium text-gray-700 mb-2">{title}</h4>
+        <div className='bg-[#6F7298] rounded-md p-2 rounded-b-none'>
+        <h4 className="font-medium text-lg text-white  mb-2">{title}</h4>
+
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-300 border border-gray-200 rounded-lg">
             <thead className="bg-amber-50">
               <tr>
                 {fields.map((field, idx) => (
-                  <th key={idx} scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  <th key={idx} scope="col" className="px-3 py-2 text-left text-sm font-medium bg-[#F8CDA7] text-[#6B3809] uppercase tracking-wider">
                     {field.label}
                   </th>
                 ))}
-                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th scope="col" className="px-3 py-2 text-left text-sm font-medium bg-[#F8CDA7] text-[#6B3809] uppercase tracking-wider">
                   Status
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-[#FDF0E7] divide-y divide-dashed text-black">
               {items.map((item, idx) => (
-                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <tr key={idx} >
                   {fields.map((field, fieldIdx) => (
-                    <td key={fieldIdx} className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">
+                    <td key={fieldIdx} className="px-3 py-2 whitespace-nowrap text-sm ">
                       {field.key === 'decoration_type' && item.decoration_details ? (
                         item.decoration_details.type
                       ) : field.key === 'decoration_number' && item.decoration_details ? (
@@ -119,11 +137,8 @@ function ViewDispatcherOrderDetails({ onClose, orders }) {
                     </td>
                   ))}
                   <td className="px-3 py-2 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      item.status === 'Done' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {item.status}
-                    </span>
+                    
+                      {StatusBadge(item.status)}
                   </td>
                 </tr>
               ))}
@@ -143,53 +158,35 @@ function ViewDispatcherOrderDetails({ onClose, orders }) {
           <DialogPanel className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl">
             <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4 max-h-[70vh] overflow-y-auto">
               <div className="sm:flex sm:items-start">
-                <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 sm:mx-0 sm:h-10 sm:w-10">
-                  <ExclamationTriangleIcon className="h-6 w-6 text-amber-600" aria-hidden="true" />
-                </div>
+
                 <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
-                  <DialogTitle as="h3" className="text-lg font-semibold text-gray-900">
+                  <DialogTitle as="h3" className="text-lg p-4 rounded-md bg-orange-400 font-semibold text-white">
                     Order #{orders.order_number} Details
                   </DialogTitle>
-
-                  {/* Order summary section */}
-                  <div className="mt-4 bg-amber-50 p-4 rounded-lg">
+                  <div className="mt-4 bg-[#fdf0e7] p-4 rounded-lg">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div>
-                        <h4 className="text-sm font-medium text-gray-500">Customer</h4>
-                        <p className="text-base font-semibold">{orders.customer_name}</p>
+                        <h4 className="text-sm font-medium text-orange-400 pb-2">Customer</h4>
+                        <p className="text-black font-semibold">{orders.customer_name}</p>
                       </div>
                       <div>
-                        <h4 className="text-sm font-medium text-gray-500">Order Date</h4>
-                        <p className="text-base font-semibold">{formatDate(orders.created_at)}</p>
+                        <h4 className="text-sm font-medium text-orange-400 pb-2">Order Date</h4>
+                        <p className="text-black font-semibold">{formatDate(orders.created_at)}</p>
                       </div>
                       <div>
-                        <h4 className="text-sm font-medium text-gray-500">Dispatcher</h4>
-                        <p className="text-base font-semibold">{orders.dispatcher_name}</p>
+                        <h4 className="text-sm font-medium text-orange-400 pb-2">Dispatcher</h4>
+                        <p className="text-black font-semibold">{orders.dispatcher_name}</p>
                       </div>
                       <div>
-                        <h4 className="text-sm font-medium text-gray-500">Status</h4>
-                        <p className="text-base font-semibold">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                            {orders.order_status || "Pending"}
-                          </span>
-                        </p>
+                        <h4 className="text-sm font-medium text-orange-400 pb-2">Status</h4>
+                       
+                            {StatusBadge(orders.order_status)}
+                      
                       </div>
                     </div>
                   </div>
 
-                  {/* Completion status section */}
-                  <div className="mt-4">
-                    <h4 className="font-medium text-gray-700 mb-2">Completion Status</h4>
-                    <div className="w-full bg-gray-200 rounded-full h-4">
-                      <div
-                        className="bg-amber-500 h-4 rounded-full"
-                        style={{ width: `${completionPercentage}%` }}
-                      ></div>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-1">{completionPercentage}% Complete</p>
-                  </div>
 
-                  {/* Render all tables from the configuration */}
                   {Object.values(tableConfigurations).map((config, index) => (
                     <OrderItemTable
                       key={index}
@@ -201,12 +198,12 @@ function ViewDispatcherOrderDetails({ onClose, orders }) {
                 </div>
               </div>
             </div>
-            
-            {/* Dialog footer */}
+
+
             <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
               <button
                 type="button"
-                className="inline-flex w-full justify-center rounded-md bg-amber-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-500 sm:ml-3 sm:w-auto"
+                className="inline-flex w-full justify-center rounded-md bg-green-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-500 sm:ml-3 sm:w-auto"
                 onClick={() => {
                   alert('Mark order as complete functionality would go here');
                 }}

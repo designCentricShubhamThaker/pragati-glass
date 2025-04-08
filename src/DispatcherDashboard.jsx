@@ -5,6 +5,7 @@ import { useAuth } from './context/auth';
 import { LuCalendarClock } from "react-icons/lu";
 import { FaCheck } from "react-icons/fa";
 
+
 const DispatcherDashboard = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState('liveOrders');
@@ -44,6 +45,35 @@ const DispatcherDashboard = () => {
     { id: 'pastOrders', label: 'PAST ORDERS' },
   ];
 
+  const getStatusCount = () => {
+    const data = localStorage.getItem("dispatcher_all_orders");
+    let allOrders = [];
+  
+    if (data) {
+      try {
+        allOrders = JSON.parse(data);
+        if (!Array.isArray(allOrders)) {
+          allOrders = [];
+        }
+      } catch (error) {
+        allOrders = [];
+      }
+    }
+  
+    let pendingOrdersCount = 0;
+    let completedOrderCount = 0;
+  
+    allOrders.forEach((e) => {
+      if (e.order_status === "Pending") {
+        pendingOrdersCount += 1;
+      } else {
+        completedOrderCount += 1;
+      }
+    });
+  
+    return { pendingOrdersCount, completedOrderCount };
+  };
+  
   const MobileSidebar = () => (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex md:hidden">
       <div className="bg-gradient-to-b from-orange-500 to-orange-600 text-white w-64 h-full flex flex-col shadow-lg">
@@ -118,55 +148,55 @@ const DispatcherDashboard = () => {
       {isMobile && mobileMenuOpen && <MobileSidebar />}
 
       <div className="flex-1 flex flex-col overflow-hidden">
-      <header className="bg-white shadow-sm p-4 flex items-center justify-between">
-      <div className="flex items-center">
-        {isMobile || collapsed ? (
-          <button onClick={toggleSidebar} className="p-2 mr-2 rounded-lg hover:bg-gray-100">
-            <Menu size={24} className="text-orange-500" />
-          </button>
-        ) : null}
-        <div className="text-xl font-bold ml-2">
-          <span className="text-black">Welcome</span> <span className="text-orange-500">Dispatcher !</span>
-        </div>
-      </div>
-      
-      <div className="flex items-center gap-4 p-2">
-        {/* Pending Tasks Indicator */}
-        <div className="flex items-center bg-none text-orange-500 rounded border-1">
-          <div className="flex items-center gap-2 px-4 py-2">
-            <LuCalendarClock size={20}  />
-            <div className=" font-bold border-r-2 pr-2">
-            10
+        <header className="bg-white shadow-sm p-4 flex items-center justify-between">
+          <div className="flex items-center">
+            {isMobile || collapsed ? (
+              <button onClick={toggleSidebar} className="p-2 mr-2 rounded-lg hover:bg-gray-100">
+                <Menu size={24} className="text-orange-500" />
+              </button>
+            ) : null}
+            <div className="text-xl font-bold ml-2">
+              <span className="text-black">Welcome</span> <span className="text-orange-500">Dispatcher !</span>
+            </div>
           </div>
-            <span className="font-medium pl-1">Pending</span>
+
+          <div className="flex items-center gap-4 p-2">
+            {/* Pending Tasks Indicator */}
+            <div className="flex items-center bg-none text-orange-500 rounded border-1">
+              <div className="flex items-center gap-2 px-4 py-2">
+                <LuCalendarClock size={20} />
+                <div className=" font-bold border-r-2 pr-2">
+                  {getStatusCount().pendingOrdersCount}
+                </div>
+                <span className="font-medium pl-1">Pending</span>
+              </div>
+
+            </div>
+            {/* /bg-[#639e3c] */}
+            {/* Completed Tasks Indicator */}
+            <div className="flex items-center text-[#639e3c] bg-none rounded border-1">
+              <div className="flex items-center gap-2 px-4 py-2">
+                <FaCheck size={20} />
+                <div className="font-bold border-r-2 pr-2">
+                {getStatusCount().CompletedOrderCount}
+                </div>
+                <span className="font-medium">Completed</span>
+              </div>
+
+            </div>
+
+            {/* Logout Button */}
+            <div className="flex items-center bg-red-500 text-white px-4 py-2.5 rounded-xl gap-2 hover:bg-red-800 hover:text-white shadow-2xl">
+              <svg className="w-5 h-5 transform rotate-180" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9"
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M16 17L21 12L16 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <button onClick={handleLogout} className="font-medium cursor-pointer">LOGOUT</button>
+            </div>
           </div>
-          
-        </div>
-        {/* /bg-[#639e3c] */}
-        {/* Completed Tasks Indicator */}
-        <div className="flex items-center text-[#639e3c] bg-none rounded border-1">
-          <div className="flex items-center gap-2 px-4 py-2">
-          <FaCheck size={20 }/>
-          <div className="font-bold border-r-2 pr-2">
-            25
-          </div>
-            <span className="font-medium">Completed</span>
-          </div>
-          
-        </div>
-        
-        {/* Logout Button */}
-        <div className="flex items-center bg-red-500 text-white px-4 py-2.5 rounded-xl gap-2 hover:bg-red-800 hover:text-white shadow-2xl">
-          <svg className="w-5 h-5 transform rotate-180" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9"
-              stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M16 17L21 12L16 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <button onClick={handleLogout} className="font-medium cursor-pointer">LOGOUT</button>
-        </div>
-      </div>
-    </header>
+        </header>
 
         <main className="flex-1 p-4 overflow-hidden">
           <div className="bg-white rounded-lg shadow-md p-6 h-full flex flex-col">
@@ -180,7 +210,7 @@ const DispatcherDashboard = () => {
           </div>
         </main>
       </div>
-     
+
     </div>
 
   );

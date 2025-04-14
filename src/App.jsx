@@ -14,7 +14,9 @@ import { SocketProvider } from "./context/SocketContext.jsx";
 const App = () => {
 
   return (
+
     <BrowserRouter>
+    
       <AuthProvider>
         <SocketProvider>
           <Routes>

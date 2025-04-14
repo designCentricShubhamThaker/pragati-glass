@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react';
 import { CalendarDays, Package, Clock, Check, Filter, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
-
-
+import { PiBeerBottleThin } from "react-icons/pi";
+import { GiBottleCap } from "react-icons/gi";
+import { FaBox } from "react-icons/fa";
+import { FaPumpSoap } from "react-icons/fa";
 
 const OrderActivity = ({ onClose, orderData }) => {
   const [selectedItem, setSelectedItem] = useState('all');
   const [expandedSections, setExpandedSections] = useState({});
 
-
   const formatTimestamp = (timestamp) => {
     try {
       if (!timestamp) return 'N/A';
-      // Handle MongoDB timestamp format ($date.$numberLong)
       const timeMs = typeof timestamp === 'object' && timestamp.$date && timestamp.$date.$numberLong
         ? parseInt(timestamp.$date.$numberLong)
         : new Date(timestamp).getTime();
@@ -40,7 +40,6 @@ const OrderActivity = ({ onClose, orderData }) => {
     }));
   };
 
-
   const parseIntFromMongo = (value) => {
     if (!value) return 0;
     if (typeof value === 'number') return value;
@@ -50,7 +49,6 @@ const OrderActivity = ({ onClose, orderData }) => {
     return 0;
   };
 
-  // Filter items based on selection
   const getFilteredItems = () => {
     const { order_details } = orderData;
     let items = [];
@@ -123,19 +121,18 @@ const OrderActivity = ({ onClose, orderData }) => {
     };
   };
 
-  // Get an item's icon based on type
   const getItemIcon = (type) => {
     switch (type) {
       case 'glass':
-        return <Package size={20} />;
+        return <PiBeerBottleThin size={20} />;
       case 'caps':
-        return <Package size={20} />;
+        return <GiBottleCap size={20} />;
       case 'boxes':
-        return <Package size={20} />;
+        return <FaBox size={20} />;
       case 'pumps':
-        return <Package size={20} />;
+        return <FaPumpSoap size={20} />;
       default:
-        return <Package size={20} />;
+        return <FaPumpSoap size={20} />;
     }
   };
 
@@ -143,17 +140,62 @@ const OrderActivity = ({ onClose, orderData }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'Completed':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'In Progress':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-green-900 text-white font-semibold px-3 py-1';
       case 'Pending':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
+        return 'bg-red-700 text-white font-semibold px-3 py-1 ';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-orange-900 text-white font-semibold px-3 py-1';
     }
   };
 
-  
+  // Get summary cards based on filter
+  const getSummaryCards = () => {
+    const { order_details } = orderData;
+    let itemTypes = [];
+    
+    if (selectedItem === 'all') {
+      itemTypes = ['glass', 'caps', 'boxes', 'pumps'];
+    } else {
+      itemTypes = [selectedItem];
+    }
+    
+    return itemTypes.map(type => {
+      const items = order_details[type] || [];
+      const totalQuantity = items.reduce((sum, item) => sum + parseIntFromMongo(item.quantity), 0);
+      const completedQuantity = items.reduce((sum, item) => sum + parseIntFromMongo(item.team_tracking?.total_completed_qty || 0), 0);
+      const progress = totalQuantity ? Math.floor((completedQuantity / totalQuantity) * 100) : 0;
+
+      return (
+        <div key={type} className="bg-white p-3 rounded-md border border-gray-200 shadow-sm">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-medium capitalize flex items-center">
+              {type === 'glass' && <PiBeerBottleThin size={16} className="mr-1" />}
+              {type === 'caps' && <GiBottleCap size={16} className="mr-1" />}
+              {type === 'boxes' && <FaBox size={16} className="mr-1" />}
+              {type === 'pumps' && <FaPumpSoap size={16} className="mr-1" />}
+              {type}
+            </span>
+            <span className="text-xs font-semibold px-3 py-1 text-white rounded-full bg-red-700">{items.length} items</span>
+          </div>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full ${progress === 100 ? 'bg-green-900' : progress > 0 ? 'bg-orange-600' : 'bg-gray-300'}`}
+                style={{ width: `${progress}%` }}
+              ></div>
+            </div>
+            <span className="text-sm font-medium whitespace-nowrap">
+              {progress}%
+            </span>
+          </div>
+          <div className="text-xs text-gray-500">
+            {completedQuantity.toLocaleString()} / {totalQuantity.toLocaleString()} units
+          </div>
+        </div>
+      );
+    });
+  };
+
   const filteredItems = getFilteredItems();
 
   return (
@@ -181,57 +223,36 @@ const OrderActivity = ({ onClose, orderData }) => {
                 </div>
               </div>
 
-              <div className="flex items-center bg-gray-100 rounded-md p-1">
-                <Filter size={16} className="ml-2 text-gray-500" />
-                <select
-                  className="bg-transparent py-2 pl-2 pr-8 rounded-md border-0 text-gray-500 focus:ring-0 text-sm"
-                  value={selectedItem}
-                  onChange={(e) => setSelectedItem(e.target.value)}
-                >
-                  <option value="all">All Items</option>
-                  <option value="glass">Glass</option>
-                  <option value="caps">Caps</option>
-                  <option value="boxes">Boxes</option>
-                  <option value="pumps">Pumps</option>
-                </select>
+              <div className="flex items-center">
+                <div className="relative group">
+                  <div className="flex items-center px-3 py-2 bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-lg shadow-sm hover:shadow transition-all cursor-pointer">
+                    <Filter size={16} className="mr-2 text-orange-600" />
+                    <select
+                      className="bg-transparent appearance-none pr-8 pl-1 text-gray-700 font-medium focus:outline-none focus:ring-0 text-sm"
+                      value={selectedItem}
+                      onChange={(e) => setSelectedItem(e.target.value)}
+                    >
+                      <option value="all">All Items</option>
+                      <option value="glass">Glass</option>
+                      <option value="caps">Caps</option>
+                      <option value="boxes">Boxes</option>
+                      <option value="pumps">Pumps</option>
+                    </select>
+                    <ChevronDown size={14} className="absolute right-3 text-orange-600" />
+                  </div>
+                </div>
               </div>
             </div>
 
             <div className="mb-8 px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
-              <h3 className="text-lg font-medium text-gray-700 mb-2">Order Progress Summary</h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {['glass', 'caps', 'boxes', 'pumps'].map(type => {
-                  const items = orderData.order_details[type] || [];
-                  const totalQuantity = items.reduce((sum, item) => sum + parseIntFromMongo(item.quantity), 0);
-                  const completedQuantity = items.reduce((sum, item) => sum + parseIntFromMongo(item.team_tracking?.total_completed_qty || 0), 0);
-                  const progress = totalQuantity ? Math.floor((completedQuantity / totalQuantity) * 100) : 0;
-
-                  return (
-                    <div key={type} className="bg-white p-3 rounded-md border border-gray-200 shadow-sm">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium capitalize">{type}</span>
-                        <span className="text-xs px-2 py-1 rounded-full bg-gray-100">{items.length} items</span>
-                      </div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${progress === 100 ? 'bg-green-500' : progress > 0 ? 'bg-blue-500' : 'bg-gray-300'
-                              }`}
-                            style={{ width: `${progress}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-sm font-medium whitespace-nowrap">
-                          {progress}%
-                        </span>
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {completedQuantity.toLocaleString()} / {totalQuantity.toLocaleString()} units
-                      </div>
-                    </div>
-                  );
-                })}
+              <h3 className="text-lg font-medium text-gray-700 mb-3">
+                {selectedItem === 'all' ? 'Order Progress Summary' : `${selectedItem.charAt(0).toUpperCase() + selectedItem.slice(1)} Progress Summary`}
+              </h3>
+              <div className={`grid grid-cols-1 ${selectedItem === 'all' ? 'md:grid-cols-4' : 'md:grid-cols-1'} gap-4`}>
+                {getSummaryCards()}
               </div>
             </div>
+            
             <div className="space-y-4">
               {filteredItems.length > 0 ? filteredItems.map((item, index) => {
                 const itemId = `${item.type}-${index}`;
@@ -291,7 +312,7 @@ const OrderActivity = ({ onClose, orderData }) => {
                 }
 
                 const getProductionStateText = () => {
-                  if (isCompleted) return "Production complete";
+                  if (isCompleted) return "Production completed";
                   if (processedEntries.length === 0) return "Production not started";
                   return "Production in progress";
                 };
@@ -302,16 +323,14 @@ const OrderActivity = ({ onClose, orderData }) => {
                     className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200"
                   >
                     <div
-                      className={`px-4 py-4 flex items-center justify-between cursor-pointer transition-colors duration-200 ${isExpanded ? 'bg-gray-100' : 'bg-gray-50 hover:bg-gray-100'
+                      className={`px-4 py-4 flex items-center justify-between cursor-pointer transition-colors duration-200 ${isExpanded ? 'bg-gray-100' : 'bg-amber-50 '
                         }`}
                       onClick={() => toggleSection(itemId)}
                     >
                       <div className="flex items-start">
-                        <div className={`p-2 rounded-md mr-3 ${item.type === 'glass' ? 'bg-orange-100 text-orange-600' :
-                          item.type === 'caps' ? 'bg-blue-100 text-blue-600' :
-                            item.type === 'boxes' ? 'bg-green-100 text-green-600' :
-                              'bg-purple-100 text-purple-600'
-                          }`}>
+                        <div
+                          className="p-2 rounded-md mr-3 text-white bg-orange-500"
+                        >
                           {getItemIcon(item.type)}
                         </div>
                         <div>
@@ -320,51 +339,42 @@ const OrderActivity = ({ onClose, orderData }) => {
                             <span className="text-sm bg-gray-100 px-2 py-1 rounded text-gray-700">
                               Qty: {item.quantity.toLocaleString()}
                             </span>
-                            {item.decoration && (
-                              <span className="text-sm bg-gray-100 px-2 py-1 rounded text-gray-700">
-                                {item.decoration} ({item.decoration_no})
-                              </span>
-                            )}
-                            {item.team && (
-                              <span className="text-sm bg-gray-100 px-2 py-1 rounded text-gray-700">
-                                Team: {item.team}
-                              </span>
-                            )}
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-4">
-                        <div className="hidden sm:block">
-                          <div className="flex items-center gap-2">
-                            <div className="w-32 h-3 bg-[#FFF0E7] rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full ${isCompleted ? 'bg-green-500' :
-                                  progress > 0 ? 'bg-blue-500' : 'bg-gray-300'
-                                  }`}
-                                style={{ width: `${progress}%` }}
-                              ></div>
-                            </div>
-                            <span className={`text-sm font-medium ${isCompleted ? 'text-green-600' :
-                              progress > 0 ? 'text-blue-600' : 'text-gray-600'
-                              }`}>
-                              {progress}%
-                            </span>
-                          </div>
-                          <div className="flex items-center mt-1">
-                            <span className={`text-xs px-2 py-0.5 rounded-full border ${getStatusColor(item.team_tracking?.status)
-                              }`}>
-                              {getProductionStateText()}
-                            </span>
-                            {isCompleted && (
-                              <span className="text-xs text-green-600 flex items-center ml-2">
-                                <Check size={12} className="mr-1" /> Done
-                              </span>
-                            )}
-                          </div>
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex-1">
+                          
                         </div>
-                        <div className={`p-1 rounded-full ${isExpanded ? 'bg-gray-200' : 'bg-gray-100'}`}>
-                          {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+
+                        <div className="flex items-center gap-4">
+                          <div className="hidden sm:block w-48">
+                            
+                            <div className="flex items-center gap-2">
+                              <div className="w-36 p-[1px] rounded-full bg-gradient-to-r from-[#993300] via-[#FF6600] to-[#cc5500]">
+                                <div className="bg-white rounded-full h-4 px-1 flex items-center overflow-hidden">
+                                  <div
+                                    className="bg-[#FF6900] h-2.5 rounded-full transition-all duration-300"
+                                    style={{ width: `${progress}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                              <span className="text-sm font-semibold text-red-800 w-8 text-right">
+                                {progress.toFixed(0)}%
+                              </span>
+                            </div>
+
+                            <div className="flex items-center mt-3 justify-between">
+                              <span className={`text-xs px-2 py-0.5 rounded-full border ${getStatusColor(item.team_tracking?.status)}`}>
+                                {getProductionStateText()}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className={`p-1 rounded-full ${isExpanded ? 'bg-gray-200' : 'bg-gray-100'}`}>
+                            {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -446,7 +456,7 @@ const OrderActivity = ({ onClose, orderData }) => {
                                       <span className="text-sm text-[#9F0F12] flex items-center font-medium">
                                         <CalendarDays size={16} className="mr-2 text-[#9F0F12]" />
                                         {formatTimestamp(entry.time)}
-                                       
+
                                       </span>
                                       <span className={`px-3 py-1 text-sm font-semibold rounded-full inline-flex items-center ${statusBadgeColor}`}>
                                         {isComplete && <Check size={12} className="mr-1 text-[#639E3C]" />}
@@ -490,7 +500,7 @@ const OrderActivity = ({ onClose, orderData }) => {
 
                                       {isComplete && (
                                         <span className="flex items-center text-green-800 text-sm font-bold">
-                                           Production Complete
+                                          Production Complete
                                         </span>
                                       )}
                                     </div>
@@ -573,12 +583,11 @@ const OrderActivity = ({ onClose, orderData }) => {
                   </div>
                 );
               }) : (
-                <div className="text-center py-8 px-4 bg-gray-50 rounded--lg border border-gray-200">
+                <div className="text-center py-8 px-4 bg-gray-50 rounded-lg border border-gray-200">
                   <p className="text-gray-600">No items found matching the selected filter.</p>
                 </div>
               )}
             </div>
-
           </DialogPanel>
         </div>
       </div>

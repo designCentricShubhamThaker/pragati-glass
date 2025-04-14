@@ -32,7 +32,7 @@ const CreateOrder = ({ onClose, onCreateOrder }) => {
 
   const decorationOptions = ["Printing", "Coating", "Frosting", "None"];
   const capProcessOptions = ["Metalised", "Non Metalised", "Metal and Assembly", "Non Metal and Assembly"];
-  // const capMaterialOptions = ["Plastic", "Aluminium", "Other"];
+  const capMaterialOptions = ["Plastic", "Aluminium", "Other"];
   const boxNames = ["Box A", "Box B", "Box C", "Box D"];
   const pumpNames = ["Pump A", "Pump B", "Pump C", "Pump D"];
 
@@ -50,8 +50,8 @@ const CreateOrder = ({ onClose, onCreateOrder }) => {
       cap_name: "N/A",
       neck_size: "",
       quantity: "",
-      process: "N/A",
-      material: "N/A",
+      cap_process: "N/A",
+      cap_material: "N/A",
       status: "Pending"
     }],
     boxes: [{
@@ -61,7 +61,7 @@ const CreateOrder = ({ onClose, onCreateOrder }) => {
       status: "Pending"
     }],
     pumps: [{
-      pump_name: "M/A",
+      pump_name: "N/A",
       neck_type: "",
       quantity: "",
       status: "Pending"
@@ -69,11 +69,13 @@ const CreateOrder = ({ onClose, onCreateOrder }) => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleDetailChange = (category, index, field, value) => {
     const updatedDetails = { ...orderDetails };
     updatedDetails[category][index][field] = value;
     setOrderDetails(updatedDetails);
   };
+
   const resetForm = () => {
     setOrderNumber('');
     setDispatcherName('');
@@ -145,8 +147,8 @@ const CreateOrder = ({ onClose, onCreateOrder }) => {
         cap_name: cap.cap_name,
         neck_size: cap.neck_size || '',
         quantity: parseInt(cap.quantity, 10) || 0,
-        process: cap.process || '',
-        material: cap.material || '',
+        process: cap.cap_process || '',
+        material: cap.cap_material || '',
         team: cap.team || '',
         status: cap.status || 'Pending'
       }));
@@ -177,7 +179,7 @@ const CreateOrder = ({ onClose, onCreateOrder }) => {
       dispatcher_name: dispatcherName.trim(),
       customer_name: customerName.trim(),
       order_status: 'Pending',
-      order_details: mappedOrderDetails  // This will only contain categories with valid items
+      order_details: mappedOrderDetails
     };
 
     try {
@@ -186,7 +188,7 @@ const CreateOrder = ({ onClose, onCreateOrder }) => {
         await onCreateOrder(response.data);
       }
 
-      alert("Order created successfully!");
+      
       resetForm();
       onClose();
     } catch (error) {
@@ -261,7 +263,6 @@ const CreateOrder = ({ onClose, onCreateOrder }) => {
     setOrderDetails(updatedDetails);
   };
 
-
   return (
     <Dialog open={true} onClose={onClose} className="relative z-10">
       <DialogBackdrop
@@ -279,7 +280,7 @@ const CreateOrder = ({ onClose, onCreateOrder }) => {
 
                 <div className="mt-3 sm:ml-4 sm:mt-0 sm:text-left w-full">
                   <DialogTitle as="h3">
-                    <div className="bg-orange-400 p-4 rounded-t-md border-b border-orange-200 shadow-sm text-center">
+                    <div className="bg-[#FF6701]  p-4 rounded-t-md border-b border-orange-200 shadow-sm text-center">
                       <h3 className="text-white text-xl  font-bold flex  tracking-wide  gap-2">
                         Create New Order
                       </h3>
@@ -341,62 +342,261 @@ const CreateOrder = ({ onClose, onCreateOrder }) => {
                       </div>
                     </div>
 
-                    <div className="mb-8 rounded-xl shadow-m bg-[#FFF0E7] ">
-                      <div className="bg-[#6f7298] p-4 rounded-md">
+                    <div className="mb-8 rounded-xl shadow-lg overflow-hidden border border-orange-200">
+
+                      <div className="bg-gradient-to-r from-[#993300] via-[#FF6600] to-[#FFB84D] p-4">
                         <h3 className="text-lg font-semibold text-white flex items-center">
                           <span className="mr-2">Team - Glass</span>
                         </h3>
                       </div>
 
-                      <div className="p-5 space-y-5">
+
+                      <div className="p-6 bg-[#FFF8F3] space-y-6">
                         {orderDetails.items.map((item, index) => (
-                          <div key={`item-${index}`} className="relative grid grid-cols-12 gap-3 items-end">
-                            <div className="col-span-12 md:col-span-4">
-                              <label className="block text-sm font-medium text-orange-700 mb-1.5">Glass Name</label>
-                              <div className="relative">
+                          <div
+                            key={`item-${index}`}
+                            className="relative bg-white rounded-lg shadow-sm p-5 border border-orange-100"
+                          >
+                            <div className="grid grid-cols-12 gap-4">
+                              {/* Glass Name */}
+                              <div className="col-span-12 md:col-span-4">
+                                <label className="block text-sm font-medium text-orange-800 mb-2">Glass Name</label>
+                                <div className="relative">
+                                  <input
+                                    type="text"
+                                    value={item.glass_name === "N/A" ? "" : (glassSearches[index] || item.glass_name)}
+                                    placeholder="Please Select"
+                                    onFocus={() => {
+                                      setIsDropdownVisible(index);
+                                      setFilteredGlassData(glassData.filter(glass => glass.FORMULA !== "N/A"));
+                                    }}
+                                    onChange={(e) => {
+                                      const newSearches = { ...glassSearches, [index]: e.target.value };
+                                      setGlassSearches(newSearches);
+                                      const searchTerm = e.target.value.toLowerCase();
+                                      const filtered = glassData.filter(glass =>
+                                        (glass.FORMULA !== "N/A" || searchTerm === "n/a") &&
+                                        glass.FORMULA.toLowerCase().includes(searchTerm)
+                                      );
+                                      setFilteredGlassData(filtered);
+                                    }}
+                                    className="w-full px-4 py-3 border border-orange-300 rounded-md text-sm 
+                           focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors
+                           placeholder:text-gray-400"
+                                  />
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5 absolute right-3 top-3 text-orange-500"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                  </svg>
+
+                                  {/* Dropdown */}
+                                  <div className="relative">
+                                    {isDropdownVisible === index && (
+                                      <div className="absolute z-50 w-full mt-1 min-w-[400px] bg-white shadow-xl max-h-60 rounded-md py-1 text-sm overflow-auto border border-orange-200">
+                                        {filteredGlassData.length > 0 ? (
+                                          filteredGlassData.map((glass, idx) => (
+                                            <div
+                                              key={idx}
+                                              className="cursor-pointer px-4 py-3 hover:bg-orange-50 transition-colors flex items-center"
+                                              onClick={() => {
+                                                const newSearches = { ...glassSearches, [index]: glass.FORMULA === "N/A" ? "" : glass.FORMULA };
+                                                setGlassSearches(newSearches);
+                                                handleDetailChange('items', index, 'glass_name', glass.FORMULA);
+                                                handleDetailChange('items', index, 'neck_size', glass.NECK_DIAM);
+                                                handleDetailChange('items', index, 'weight', glass.ML);
+                                                setIsDropdownVisible(false);
+                                              }}
+                                            >
+                                              <span className="text-orange-700 font-medium">
+                                                {glass.FORMULA === "N/A" ? "Please Select" : glass.FORMULA}
+                                              </span>
+                                            </div>
+                                          ))
+                                        ) : (
+                                          <div className="px-4 py-3 text-gray-500 italic">No results found</div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="col-span-12 md:col-span-8">
+                                <div className="grid grid-cols-12 gap-4">
+                                  {/* Weight */}
+                                  <div className="col-span-6 md:col-span-2">
+                                    <label className="block text-sm font-medium text-orange-800 mb-2">Weight</label>
+                                    <input
+                                      type="text"
+                                      value={item.weight}
+                                      onChange={(e) => handleDetailChange('items', index, 'weight', e.target.value)}
+                                      className="w-full px-4 py-3 border bg-gray-50 border-orange-200 rounded-md text-sm text-orange-800 font-medium"
+                                      readOnly
+                                    />
+                                  </div>
+
+                                  {/* Neck Size */}
+                                  <div className="col-span-6 md:col-span-2">
+                                    <label className="block text-sm font-medium text-orange-800 mb-2">Neck Size</label>
+                                    <input
+                                      type="text"
+                                      value={item.neck_size}
+                                      onChange={(e) => handleDetailChange('items', index, 'neck_size', e.target.value)}
+                                      className="w-full px-4 py-3 border bg-gray-50 border-orange-200 rounded-md text-sm text-orange-800 font-medium"
+                                      readOnly
+                                    />
+                                  </div>
+
+                                  {/* Decoration */}
+                                  <div className="col-span-12 md:col-span-3">
+                                    <label className="block text-sm font-medium text-orange-800 mb-2">Decoration</label>
+                                    <div className="relative">
+                                      <select
+                                        value={item.decoration}
+                                        onChange={(e) => handleDetailChange('items', index, 'decoration', e.target.value)}
+                                        className="w-full appearance-none px-4 py-3 border border-orange-300 rounded-md text-sm 
+                              focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+                                      >
+                                        <option value="N/A">Please Select</option>
+                                        {decorationOptions
+                                          .filter(name => name !== "N/A")
+                                          .map((name, idx) => (
+                                            <option key={idx} value={name}>
+                                              {name}
+                                            </option>
+                                          ))}
+                                      </select>
+
+                                      <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        className="h-5 w-5 absolute right-3 top-3 text-orange-500 pointer-events-none"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                      >
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                      </svg>
+                                    </div>
+                                  </div>
+
+                                  {/* Deco No */}
+                                  <div className="col-span-6 md:col-span-2">
+                                    <label className="block text-sm font-medium text-orange-800 mb-2">Deco No</label>
+                                    <input
+                                      type="text"
+                                      value={item.decoration_no}
+                                      onChange={(e) => handleDetailChange('items', index, 'decoration_no', e.target.value)}
+                                      className="w-full px-4 py-3 border border-orange-300 rounded-md text-sm 
+                            focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                    />
+                                  </div>
+
+                                  {/* Quantity */}
+                                  <div className="col-span-6 md:col-span-3">
+                                    <label className="block text-sm font-medium text-orange-800 mb-2">Quantity</label>
+                                    <div className="relative">
+                                      <input
+                                        type="number"
+                                        value={item.quantity}
+                                        onChange={(e) => handleDetailChange('items', index, 'quantity', e.target.value)}
+                                        className="w-full px-4 py-3 border border-orange-300 rounded-md text-sm 
+                              focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="absolute -top-3 right-3 flex items-center space-x-2">
+                              <button
+                                type="button"
+                                onClick={() => addItem("items")}
+                                className="text-white p-1.5 cursor-pointer rounded-full bg-orange-600 hover:bg-orange-700 transition-colors shadow-sm"
+                                title="Add New Item"
+                              >
+                                <Plus size={16} strokeWidth={2.5} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeItem("items", index)}
+                                className={`text-white p-1.5 rounded-full transition-colors shadow-sm
+                      ${orderDetails.items.length === 1
+                                    ? 'bg-gray-400 cursor-not-allowed'
+                                    : 'bg-orange-500 hover:bg-orange-600 cursor-pointer'
+                                  }`}
+                                disabled={orderDetails.items.length === 1}
+                                title="Remove Item"
+                              >
+                                <GoTrash size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mb-8 rounded-xl shadow-lg overflow-hidden border border-orange-200">
+                      <div className="bg-gradient-to-r from-[#993300] via-[#FF6600] to-[#FFB84D] p-4">
+                        <h3 className="text-lg font-semibold text-white flex items-center">
+                          <span className="mr-2">Team - Cap</span>
+                        </h3>
+                      </div>
+
+                      <div className="p-6 bg-[#FFF8F3] space-y-6">
+                        {orderDetails.caps.map((cap, index) => (
+                          <div
+                            key={`cap-${index}`}
+                            className="relative bg-white rounded-lg shadow-sm p-5 border border-orange-100"
+                          >
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                              <div className="col-span-12 md:col-span-4">
+                                <label className="block text-sm font-medium text-orange-800 mb-2">Cap Name</label>
                                 <input
                                   type="text"
-                                  value={item.glass_name === "N/A" ? "" : (glassSearches[index] || item.glass_name)}
+                                  value={cap.cap_name === "N/A" ? "" : (capSearches[index] || cap.cap_name)}
                                   placeholder="Please Select"
                                   onFocus={() => {
-                                    setIsDropdownVisible(index);
-                                    setFilteredGlassData(glassData.filter(glass => glass.FORMULA !== "N/A"));
+                                    setIsCapDropdownVisible(index);
+                                    setFilteredCapData(CapData.filter(cap => cap.FORMULA !== "N/A"));
                                   }}
                                   onChange={(e) => {
-                                    const newSearches = { ...glassSearches, [index]: e.target.value };
-                                    setGlassSearches(newSearches);
+                                    const newSearches = { ...capSearches, [index]: e.target.value };
+                                    setCapSearches(newSearches);
                                     const searchTerm = e.target.value.toLowerCase();
-                                    const filtered = glassData.filter(glass =>
-                                      (glass.FORMULA !== "N/A" || searchTerm === "n/a") &&
-                                      glass.FORMULA.toLowerCase().includes(searchTerm)
+                                    const filtered = CapData.filter(cap =>
+                                      (cap.FORMULA !== "N/A" || searchTerm === "n/a") &&
+                                      cap.FORMULA.toLowerCase().includes(searchTerm)
                                     );
-                                    setFilteredGlassData(filtered);
+                                    setFilteredCapData(filtered);
                                   }}
-                                  className="w-full px-3 py-2.5 border border-orange-300 rounded-md text-sm shadow-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-colors placeholder:text-white bg-white"
+                                  className="w-full px-4 py-3 bg-white border border-orange-300 rounded-md text-sm 
+              focus:ring-2 focus:ring-orange-500 focus:border-transparent
+              placeholder:text-gray-400"
                                 />
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute right-3 top-2.5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-
                                 <div className="relative">
-                                  {isDropdownVisible === index && (
-                                    <div className="absolute z-999 w-full mt-1 min-w-[400px] bg-white shadow-lg max-h-60 rounded-md py-1 text-sm overflow-auto border border-orange-200">
-                                      {filteredGlassData.length > 0 ? (
-                                        filteredGlassData.map((glass, idx) => (
+                                  {isCapDropdownVisible === index && (
+                                    <div className="absolute z-10 w-full mt-1 min-w-[400px] bg-white shadow-xl max-h-60 rounded-md py-1 text-sm overflow-auto border border-orange-200">
+                                      {filteredCapData.length > 0 ? (
+                                        filteredCapData.map((cap, idx) => (
                                           <div
                                             key={idx}
-                                            className="cursor-pointer px-4 py-3 hover:bg-orange-50 transition-colors flex items-center"
+                                            className="cursor-pointer px-4 py-3 hover:bg-orange-50 transition-colors"
                                             onClick={() => {
-                                              const newSearches = { ...glassSearches, [index]: glass.FORMULA === "N/A" ? "" : glass.FORMULA };
-                                              setGlassSearches(newSearches);
-                                              handleDetailChange('items', index, 'glass_name', glass.FORMULA);
-                                              handleDetailChange('items', index, 'neck_size', glass.NECK_DIAM);
-                                              handleDetailChange('items', index, 'weight', glass.ML);
-                                              setIsDropdownVisible(false);
+                                              const newSearches = { ...capSearches, [index]: cap.FORMULA === "N/A" ? "" : cap.FORMULA };
+                                              setCapSearches(newSearches);
+                                              handleDetailChange('caps', index, 'cap_name', cap.FORMULA);
+                                              handleDetailChange('caps', index, 'neck_size', cap.NECK_DIAM);
+                                              setIsCapDropdownVisible(false);
                                             }}
                                           >
-                                            <span className="text-orange-600 font-medium">
-                                              {glass.FORMULA === "N/A" ? "Please Select" : glass.FORMULA}
+                                            <span className="text-orange-700 font-medium">
+                                              {cap.FORMULA === "N/A" ? "Please Select" : cap.FORMULA}
                                             </span>
                                           </div>
                                         ))
@@ -407,40 +607,28 @@ const CreateOrder = ({ onClose, onCreateOrder }) => {
                                   )}
                                 </div>
                               </div>
-                            </div>
 
-                            <div className="col-span-6 md:col-span-1">
-                              <label className="block text-sm font-medium text-orange-700 mb-1.5">Weight</label>
-                              <input
-                                type="text"
-                                value={item.weight}
-                                onChange={(e) => handleDetailChange('items', index, 'weight', e.target.value)}
-                                className="w-full px-3 py-2.5 border  bg-white border-orange-200 rounded-md text-sm  text-orange-800 font-medium shadow-sm"
-                                readOnly
-                              />
-                            </div>
+                              <div className="col-span-12 md:col-span-2">
+                                <label className="block text-sm font-medium text-orange-800 mb-2">Neck Size</label>
+                                <input
+                                  type="text"
+                                  value={cap.neck_size}
+                                  onChange={(e) => handleDetailChange('caps', index, 'neck_size', e.target.value)}
+                                  className="w-full px-4 py-3 border border-orange-300 rounded-md text-sm bg-gray-50 text-orange-800 font-medium"
+                                  readOnly
+                                />
+                              </div>
 
-                            <div className="col-span-6 md:col-span-1">
-                              <label className="block text-sm font-medium text-orange-700 mb-1.5">Neck Size</label>
-                              <input
-                                type="text"
-                                value={item.neck_size}
-                                onChange={(e) => handleDetailChange('items', index, 'neck_size', e.target.value)}
-                                className="w-full px-3 py-2.5 border border-orange-200 rounded-md text-sm bg-white text-orange-800 font-medium shadow-sm"
-                                readOnly
-                              />
-                            </div>
-
-                            <div className="col-span-6 md:col-span-2">
-                              <label className="block text-sm font-medium text-orange-700 mb-1.5">Decoration</label>
-                              <div className="relative">
+                              <div className="col-span-12 md:col-span-2">
+                                <label className="block text-sm font-medium text-orange-800 mb-2">Cap Process</label>
                                 <select
-                                  value={item.decoration}
-                                  onChange={(e) => handleDetailChange('items', index, 'decoration', e.target.value)}
-                                  className="w-full appearance-none px-3 py-2.5 border border-orange-300 rounded-md text-sm shadow-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent bg-white"
+                                  value={cap.cap_process || ""}
+                                  onChange={(e) => handleDetailChange('caps', index, 'cap_process', e.target.value)}
+                                  className="w-full px-4 py-3 bg-white border border-orange-300 rounded-md text-sm 
+              focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                                 >
                                   <option value="N/A">Please Select</option>
-                                  {decorationOptions
+                                  {capProcessOptions
                                     .filter(name => name !== "N/A")
                                     .map((name, idx) => (
                                       <option key={idx} value={name}>
@@ -448,322 +636,268 @@ const CreateOrder = ({ onClose, onCreateOrder }) => {
                                       </option>
                                     ))}
                                 </select>
-
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute right-3 top-2.5 text-orange-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
                               </div>
-                            </div>
 
-                            <div className="col-span-6 md:col-span-1">
-                              <label className="block text-sm font-medium text-orange-700 mb-1.5">Deco No</label>
-                              <input
-                                type="text"
-                                value={item.decoration_no}
-                                onChange={(e) => handleDetailChange('items', index, 'decoration_no', e.target.value)}
-                                className="w-full px-3 py-2.5 border  bg-white border-orange-300 rounded-md text-sm shadow-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-colors"
-                              />
-                            </div>
+                              <div className="col-span-12 md:col-span-2">
+                                <label className="block text-sm font-medium text-orange-800 mb-2">Cap Material</label>
+                                <select
+                                  value={cap.cap_material || ""}
+                                  onChange={(e) => handleDetailChange('caps', index, 'cap_material', e.target.value)}
+                                  className="w-full px-4 py-3 bg-white border border-orange-300 rounded-md text-sm 
+              focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                >
+                                  <option value="N/A">Please Select</option>
+                                  {capMaterialOptions
+                                    .filter(name => name !== "N/A")
+                                    .map((name, idx) => (
+                                      <option key={idx} value={name}>
+                                        {name}
+                                      </option>
+                                    ))}
+                                </select>
+                              </div>
 
-                            <div className="col-span-8 md:col-span-2">
-                              <label className="block text-sm font-medium text-orange-700 mb-1.5">Quantity</label>
-                              <div className="relative">
+                              <div className="col-span-12 md:col-span-2">
+                                <label className="block text-sm font-medium text-orange-800 mb-2">Quantity</label>
                                 <input
                                   type="number"
-                                  value={item.quantity}
-                                  onChange={(e) => handleDetailChange('items', index, 'quantity', e.target.value)}
-                                  className="w-full px-3 py-2.5 border  bg-white border-orange-300 rounded-md text-sm shadow-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-colors"
+                                  value={cap.quantity}
+                                  onChange={(e) => handleDetailChange('caps', index, 'quantity', e.target.value)}
+                                  className="w-full px-4 py-3 border border-orange-300 rounded-md text-sm 
+              focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                                 />
-
                               </div>
                             </div>
 
-                            <div className="col-span-4 md:col-span-1 flex justify-end mb-2">
-                              <div className="flex items-center space-x-3">
-                                <button
-                                  type="button"
-                                  onClick={() => addItem("items")}
-                                  className="text-white p-1 cursor-pointer rounded-sm bg-[#6b3809] transition-colors"
-                                >
-                                  <Plus size={18} strokeWidth={2.5} />
-                                </button>
-                                {
-
-                                }
-                                <button
-                                  type="button"
-                                  onClick={() => removeItem("items", index)}
-                                  className={`text-white p-2 rounded-sm transition-colors ${orderDetails.items.length === 1
+                            <div className="absolute -top-3 right-3 flex items-center space-x-2">
+                              <button
+                                type="button"
+                                onClick={() => addItem('caps')}
+                                className="text-white p-1.5 cursor-pointer rounded-full bg-orange-600 hover:bg-orange-700 transition-colors shadow-sm"
+                                title="Add New Cap"
+                              >
+                                <Plus size={16} strokeWidth={2.5} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeItem('caps', index)}
+                                className={`text-white p-1.5 rounded-full transition-colors shadow-sm
+            ${orderDetails.caps.length === 1
                                     ? 'bg-gray-400 cursor-not-allowed'
-                                    : 'bg-orange-400 cursor-pointer'
-                                    }`}
-                                  disabled={orderDetails.items.length === 1}
-                                >
-                                  <GoTrash size={14} strokeWidth={1} />
-                                </button>
-                              </div>
+                                    : 'bg-orange-500 hover:bg-orange-600 cursor-pointer'
+                                  }`}
+                                disabled={orderDetails.caps.length === 1}
+                                title="Remove Cap"
+                              >
+                                <GoTrash size={16} />
+                              </button>
                             </div>
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    <div className="mb-8 rounded-xl shadow-m bg-[#FFF0E7]">
-                      <div className="bg-[#6f7298] p-4 rounded-md">
-                        <h3 className="text-lg font-semibold text-white flex items-center">
-                          <span className="mr-2">Team - Cap</span>
-                        </h3>
-                      </div>
-
-                      {orderDetails.caps.map((cap, index) => (
-                        <div key={`cap-${index}`} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3  p-4 rounded-md">
-                          <div className="col-span-1 lg:col-span-2">
-                            <label className="block text-sm font-medium text-orange-700 mb-1">Cap Name</label>
-                            <input
-                              type="text"
-                              value={cap.cap_name === "N/A" ? "" : (capSearches[index] || cap.cap_name)}
-                              placeholder="Please Select"
-                              onFocus={() => {
-                                setIsCapDropdownVisible(index);
-                                setFilteredCapData(CapData.filter(cap => cap.FORMULA !== "N/A"));
-                              }}
-                              onChange={(e) => {
-                                const newSearches = { ...capSearches, [index]: e.target.value };
-                                setCapSearches(newSearches);
-                                const searchTerm = e.target.value.toLowerCase();
-                                const filtered = CapData.filter(cap =>
-
-                                  (cap.FORMULA !== "N/A" || searchTerm === "n/a") &&
-                                  cap.FORMULA.toLowerCase().includes(searchTerm)
-                                );
-                                setFilteredCapData(filtered);
-                              }}
-                              className="w-full px-3 py-2  bg-white border border-orange-300 rounded-md text-sm shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                            />
-
-                            <div className="relative">
-                              {isCapDropdownVisible === index && (
-                                <div className="absolute z-10 w-full mt-1 bg-white shadow-lg max-h-60 min-w-[400px] rounded-md py-1 text-sm overflow-auto border border-orange-200">
-                                  {filteredCapData.length > 0 ? (
-                                    filteredCapData.map((cap, idx) => (
-                                      <div
-                                        key={idx}
-                                        className="cursor-pointer px-4 py-2 hover:bg-orange-100"
-                                        onClick={() => {
-                                          const newSearches = { ...capSearches, [index]: cap.FORMULA === "N/A" ? "" : cap.FORMULA };
-                                          setCapSearches(newSearches);
-                                          handleDetailChange('caps', index, 'cap_name', cap.FORMULA);
-                                          handleDetailChange('caps', index, 'neck_size', cap.NECK_DIAM);
-                                          setIsCapDropdownVisible(false);
-                                        }}
-                                      >
-                                        {cap.FORMULA === "N/A" ? "Please Select" : cap.FORMULA}
-                                      </div>
-                                    ))
-                                  ) : (
-                                    <div className="px-4 py-2 text-gray-500">No results found</div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="col-span-1 lg:col-span-1">
-                            <label className="block text-sm font-medium text-orange-700 mb-1">Neck Size</label>
-                            <input
-                              type="text"
-                              value={cap.neck_size}
-                              onChange={(e) => handleDetailChange('items', index, 'neck_size', e.target.value)}
-                              className="w-full px-3 py-2 border border-orange-300 rounded-md text-sm shadow-sm  bg-white focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                            />
-                          </div>
-
-                          <div className="col-span-1 lg:col-span-1">
-                            <label className="block text-sm font-medium text-orange-700 mb-1">Quantity</label>
-                            <input
-                              type="number"
-                              value={cap.quantity}
-                              onChange={(e) => handleDetailChange('caps', index, 'quantity', e.target.value)}
-                              className="w-full px-3 py-2 border border-orange-300 rounded-md text-sm shadow-sm  bg-white focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                            />
-                          </div>
-
-                          <div className="flex items-end justify-end lg:col-span-2">
-                            <div className="flex space-x-3">
-                              <button
-                                type="button"
-                                onClick={() => addItem('caps')}
-                                className="text-white p-1 cursor-pointer rounded-sm bg-[#6b3809] transition-colors"
-                              >
-                                <Plus size={18} strokeWidth={2.5} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => removeItem('caps', index)}
-                                className={`text-white p-2 rounded-sm transition-colors ${orderDetails.caps.length === 1
-                                  ? 'bg-gray-400 cursor-not-allowed'
-                                  : 'bg-orange-400 cursor-pointer'
-                                  }`}
-                                disabled={orderDetails.caps.length === 1}
-                              >
-                                <GoTrash size={14} strokeWidth={1} />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="mb-8 rounded-xl shadow-m bg-[#FFF0E7] ">
-                      <div className="bg-[#6f7298]  border-1 border-b-0 border-[#ec7a38] p-4 rounded-md rounded-b-none">
+                    <div className="mb-8 rounded-xl shadow-lg overflow-hidden border border-orange-200">
+                      <div className="bg-gradient-to-r from-[#993300] via-[#FF6600] to-[#FFB84D] p-4">
                         <h3 className="text-lg font-semibold text-white flex items-center">
                           <span className="mr-2">Team - Box</span>
                         </h3>
                       </div>
 
-                      {orderDetails.boxes.map((box, index) => (
-                        <div key={`box-${index}`} className="grid grid-cols-1 md:grid-cols-4 gap-3  p-4  border-1 border-t-0 border-[#ec7a38] rounded-md rounded-t-none">
-                          <div className="col-span-1">
-                            <label className="block text-sm font-medium text-orange-700 mb-1">Box Name</label>
-                            <select
-                              value={box.box_name}
-                              onChange={(e) => handleDetailChange('boxes', index, 'box_name', e.target.value)}
-                              className="w-full px-3 py-2 border  bg-white border-orange-300 rounded-md text-sm shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                            >
-                              <option value="N/A">Please Select</option>
-                              {boxNames
-                                .filter(name => name !== "N/A")
-                                .map((name, idx) => (
-                                  <option key={idx} value={name}>
-                                    {name}
-                                  </option>
-                                ))}
-                            </select>
-                          </div>
+                      <div className="p-6 bg-[#FFF8F3] space-y-6">
+                        {orderDetails.boxes.map((box, index) => (
+                          <div
+                            key={`box-${index}`}
+                            className="relative bg-white rounded-lg shadow-sm p-5 border border-orange-100"
+                          >
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              {/* Box Name */}
+                              <div className="col-span-1">
+                                <label className="block text-sm font-medium text-orange-800 mb-2">Box Name</label>
+                                <div className="relative">
+                                  <select
+                                    value={box.box_name}
+                                    onChange={(e) => handleDetailChange('boxes', index, 'box_name', e.target.value)}
+                                    className="w-full appearance-none px-4 py-3 border bg-white border-orange-300 rounded-md text-sm 
+                          focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                  >
+                                    <option value="N/A">Please Select</option>
+                                    {boxNames
+                                      .filter(name => name !== "N/A")
+                                      .map((name, idx) => (
+                                        <option key={idx} value={name}>
+                                          {name}
+                                        </option>
+                                      ))}
+                                  </select>
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5 absolute right-3 top-3 text-orange-500 pointer-events-none"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </div>
+                              </div>
 
-                          <div className="col-span-1">
-                            <label className="block text-sm font-medium text-orange-700 mb-1">Approval Code</label>
-                            <input
-                              type="text"
-                              value={box.approval_code}
-                              onChange={(e) => handleDetailChange('boxes', index, 'approval_code', e.target.value)}
-                              className="w-full   bg-white px-3 py-2 border border-orange-300 rounded-md text-sm shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                              <div className="col-span-1">
+                                <label className="block text-sm font-medium text-orange-800 mb-2">Approval Code</label>
+                                <input
+                                  type="text"
+                                  value={box.approval_code}
+                                  onChange={(e) => handleDetailChange('boxes', index, 'approval_code', e.target.value)}
+                                  className="w-full px-4 py-3 bg-white border border-orange-300 rounded-md text-sm 
+                        focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                />
+                              </div>
 
-                            />
-                          </div>
+                              {/* Quantity */}
+                              <div className="col-span-1">
+                                <label className="block text-sm font-medium text-orange-800 mb-2">Quantity</label>
+                                <input
+                                  type="number"
+                                  value={box.quantity}
+                                  onChange={(e) => handleDetailChange('boxes', index, 'quantity', e.target.value)}
+                                  className="w-full px-4 py-3 bg-white border border-orange-300 rounded-md text-sm 
+                        focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                />
+                              </div>
+                            </div>
 
-                          <div className="col-span-1">
-                            <label className="block text-sm font-medium text-orange-700 mb-1">Quantity</label>
-                            <input
-                              type="number"
-                              value={box.quantity}
-                              onChange={(e) => handleDetailChange('boxes', index, 'quantity', e.target.value)}
-                              className="w-full px-3 py-2   bg-white border border-orange-300 rounded-md text-sm shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-
-                            />
-                          </div>
-
-                          <div className="col-span-4 md:col-span-1 flex justify-end mb-2">
-                            <div className="flex items-center space-x-3">
+                            {/* Actions */}
+                            <div className="absolute -top-3 right-3 flex items-center space-x-2">
                               <button
                                 type="button"
                                 onClick={() => addItem("boxes")}
-                                className="text-white p-1 cursor-pointer rounded-sm bg-[#6b3809] transition-colors"
+                                className="text-white p-1.5 cursor-pointer rounded-full bg-orange-600 hover:bg-orange-700 transition-colors shadow-sm"
+                                title="Add New Box"
                               >
-                                <Plus size={18} strokeWidth={2.5} />
+                                <Plus size={16} strokeWidth={2.5} />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => removeItem("boxes", index)}
-                                className={`text-white p-2 rounded-sm transition-colors ${orderDetails.boxes.length === 1
-                                  ? 'bg-gray-400 cursor-not-allowed'
-                                  : 'bg-orange-400 cursor-pointer'
+                                className={`text-white p-1.5 rounded-full transition-colors shadow-sm
+                      ${orderDetails.boxes.length === 1
+                                    ? 'bg-gray-400 cursor-not-allowed'
+                                    : 'bg-orange-500 hover:bg-orange-600 cursor-pointer'
                                   }`}
+                                disabled={orderDetails.boxes.length === 1}
+                                title="Remove Box"
                               >
-                                <GoTrash size={14} strokeWidth={1} />
+                                <GoTrash size={16} />
                               </button>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
 
-                    <div className="mb-8 rounded-xl shadow-m bg-[#FFF0E7] ">
-                      <div className="bg-[#6f7298] p-4 rounded-md">
+                    {/* Team - Pump Component */}
+                    <div className="mb-8 rounded-xl shadow-lg overflow-hidden border border-orange-200">
+                      {/* Header */}
+                      <div className="bg-gradient-to-r from-[#993300] via-[#FF6600] to-[#FFB84D] p-4">
                         <h3 className="text-lg font-semibold text-white flex items-center">
                           <span className="mr-2">Team - Pump</span>
                         </h3>
                       </div>
 
+                      {/* Content */}
+                      <div className="p-6 bg-[#FFF8F3] space-y-6">
+                        {orderDetails.pumps.map((pump, index) => (
+                          <div
+                            key={`pump-${index}`}
+                            className="relative bg-white rounded-lg shadow-sm p-5 border border-orange-100"
+                          >
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              {/* Pump Name */}
+                              <div className="col-span-1">
+                                <label className="block text-sm font-medium text-orange-800 mb-2">Pump Name</label>
+                                <div className="relative">
+                                  <select
+                                    value={pump.pump_name}
+                                    onChange={(e) => handleDetailChange('pumps', index, 'pump_name', e.target.value)}
+                                    className="w-full appearance-none px-4 py-3 bg-white border border-orange-300 rounded-md text-sm 
+                          focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                  >
+                                    <option value="N/A">Please Select</option>
+                                    {pumpNames
+                                      .filter(name => name !== "N/A")
+                                      .map((name, idx) => (
+                                        <option key={idx} value={name}>
+                                          {name}
+                                        </option>
+                                      ))}
+                                  </select>
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5 absolute right-3 top-3 text-orange-500 pointer-events-none"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </div>
+                              </div>
 
-                      {orderDetails.pumps.map((pump, index) => (
-                        <div key={`pump-${index}`} className="grid grid-cols-1 md:grid-cols-4 gap-3 border-orange-600 p-4 rounded-md ">
-                          <div className="col-span-1">
-                            <label className="block text-sm font-medium text-orange-700 mb-1">Pump Name</label>
-                            <select
-                              value={pump.pump_name}
-                              onChange={(e) => handleDetailChange('pumps', index, 'pump_name', e.target.value)}
-                              className="w-full px-3  bg-white py-2 border border-orange-300 rounded-md text-sm shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                              {/* Neck Type */}
+                              <div className="col-span-1">
+                                <label className="block text-sm font-medium text-orange-800 mb-2">Neck Type</label>
+                                <input
+                                  type="text"
+                                  value={pump.neck_type}
+                                  onChange={(e) => handleDetailChange('pumps', index, 'neck_type', e.target.value)}
+                                  className="w-full px-4 py-3 bg-white border border-orange-300 rounded-md text-sm 
+                        focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                />
+                              </div>
 
-                            >
-                              <option value="N/A">Please Select</option>
-                              {pumpNames
-                                .filter(name => name !== "N/A")
-                                .map((name, idx) => (
-                                  <option key={idx} value={name}>
-                                    {name}
-                                  </option>
-                                ))}
-                            </select>
-                          </div>
+                              {/* Quantity */}
+                              <div className="col-span-1">
+                                <label className="block text-sm font-medium text-orange-800 mb-2">Quantity</label>
+                                <input
+                                  type="number"
+                                  value={pump.quantity}
+                                  onChange={(e) => handleDetailChange('pumps', index, 'quantity', e.target.value)}
+                                  className="w-full px-4 py-3 bg-white border border-orange-300 rounded-md text-sm 
+                        focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                />
+                              </div>
+                            </div>
 
-                          <div className="col-span-1">
-                            <label className="block text-sm font-medium text-orange-700 mb-1">Neck Type</label>
-                            <input
-                              type="text"
-                              value={pump.neck_type}
-                              onChange={(e) => handleDetailChange('pumps', index, 'neck_type', e.target.value)}
-                              className="w-full  bg-white px-3 py-2 border border-orange-300 rounded-md text-sm shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-
-                            />
-                          </div>
-
-                          <div className="col-span-1">
-                            <label className="block text-sm font-medium text-orange-700 mb-1">Quantity</label>
-                            <input
-                              type="number"
-                              value={pump.quantity}
-                              onChange={(e) => handleDetailChange('pumps', index, 'quantity', e.target.value)}
-                              className="w-full  bg-white px-3 py-2 border border-orange-300 rounded-md text-sm shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-
-                            />
-                          </div>
-
-                          <div className="col-span-4 md:col-span-1 flex justify-end mb-2">
-                            <div className="flex items-center space-x-3">
+                            {/* Actions */}
+                            <div className="absolute -top-3 right-3 flex items-center space-x-2">
                               <button
                                 type="button"
                                 onClick={() => addItem("pumps")}
-                                className="text-white p-1 cursor-pointer rounded-sm bg-[#6b3809] transition-colors"
+                                className="text-white p-1.5 cursor-pointer rounded-full bg-orange-600 hover:bg-orange-700 transition-colors shadow-sm"
+                                title="Add New Pump"
                               >
-                                <Plus size={18} strokeWidth={2.5} />
+                                <Plus size={16} strokeWidth={2.5} />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => removeItem("pumps", index)}
-                                className={`text-white p-2 rounded-sm transition-colors ${orderDetails.pumps.length === 1
-                                  ? 'bg-gray-400 cursor-not-allowed'
-                                  : 'bg-orange-400 cursor-pointer'
+                                className={`text-white p-1.5 rounded-full transition-colors shadow-sm
+                      ${orderDetails.pumps.length === 1
+                                    ? 'bg-gray-400 cursor-not-allowed'
+                                    : 'bg-orange-500 hover:bg-orange-600 cursor-pointer'
                                   }`}
                                 disabled={orderDetails.pumps.length === 1}
+                                title="Remove Pump"
                               >
-                                <GoTrash size={14} strokeWidth={1} />
+                                <GoTrash size={16} />
                               </button>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
+
+
                     <div className="flex justify-end mt-8">
                       <button
                         type="button"

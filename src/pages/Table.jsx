@@ -2,23 +2,22 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTable, useGlobalFilter, useSortBy, usePagination } from 'react-table';
 import { Eye, Plus, Check } from 'lucide-react';
 import { FiEdit } from "react-icons/fi";
-import { BsFiletypeCsv } from "react-icons/bs";
+import {  toast } from 'react-hot-toast';
 import { TbTimelineEvent } from "react-icons/tb";
-import { RiTimelineView } from "react-icons/ri";
-
 import axios from 'axios';
 import CreateOrder from '../child-components/CreateOrder';
 import OrderActivity from '../child-components/OrderActivity';
 import ViewDispatcherOrderDetails from '../child-components/ViewDispatcherOrderDetails.jsx';
 import { useAuth } from '../context/auth';
-
 import {
   setupLocalStorageSync,
   updateLocalStorageOrders,
   getOrdersFromLocalStorage,
 } from '../utils/LocalStorageUtils.jsx';
-import ConnectionStatus from '../components/ConnectionStatus.jsx';
 import { useSocket } from '../context/SocketContext.jsx';
+import { FaDownload } from 'react-icons/fa';
+import { MdDeleteOutline } from "react-icons/md";
+import EditDispatcherOrder from '../child-components/EditDispatcherOrder.jsx';
 
 function customGlobalFilter(rows, columnIds, filterValue) {
   if (filterValue === "") return rows;
@@ -36,6 +35,7 @@ function customGlobalFilter(rows, columnIds, filterValue) {
 const Table = () => {
   const [showModal, setShowModal] = useState(false);
   const [createOrder, setCreateOrder] = useState(false);
+  const [editOrder,setEditOrder] = useState(false)
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,6 +77,10 @@ const Table = () => {
     }
   };
 
+  const handleSaveData = ()=>{
+    console.log('data updatedd')
+  }
+
   useEffect(() => {
     if (!socket || !isConnected) return;
 
@@ -99,6 +103,7 @@ const Table = () => {
 
       const updatedOrders = updateLocalStorageOrders(user, [orderToAdd]);
       setOrders(updatedOrders);
+      toast.success("Order created successfully!");
     } catch (error) {
       console.error('Error creating order:', error);
     }
@@ -108,6 +113,7 @@ const Table = () => {
     setShowModal(false);
     setCreateOrder(false);
     setShowTimeline(false);
+    setEditOrder(false)
   };
 
   const formatSimpleDate = (dateString) => {
@@ -193,12 +199,17 @@ const Table = () => {
     setShowTimeline(true);
   };
 
+  const handleEditOrder = (rowData) => {
+    setSelectedOrder(rowData.orderDetails);
+    setEditOrder(true);
+  };
+
   const columns = useMemo(
     () => [
       {
         Header: "Order No",
         accessor: "orderNo",
-        width: 80,
+        width: 90,
         Cell: ({ value }) => String(value)
       },
       {
@@ -222,90 +233,113 @@ const Table = () => {
         accessor: (row) => calculateCompletionPercentage(row),
         id: "completionPercentage",
         Cell: ({ value }) => (
-          <div className="w-full bg-gray-200 rounded-full h-2.5">
-            <div
-              className="bg-[#FF6900] h-2.5 rounded-full"
-              style={{ width: `${value}%` }}
-            ></div>
-            <span className="text-xs ml-1 text-[#FF6900] font-medium">{value.toFixed(0)}%</span>
+          <div className="w-full max-w-sm flex items-center space-x-2">
+            <div className="flex-1 p-[1px] rounded-full bg-gradient-to-r from-[#993300] via-[#FF6600] to-[#cc5500]">
+              <div className="bg-white rounded-full h-4 px-1 flex items-center overflow-hidden">
+                <div
+                  className="bg-[#FF6900] h-2.5 rounded-full transition-all duration-300"
+                  style={{ width: `${value}%` }}
+                ></div>
+              </div>
+            </div>
+            <span
+            className={`text-sm font-semibold text-red-800`}
+            >
+              {value.toFixed(0)}%
+            </span>
           </div>
         ),
-        width: 80,
+        width: 170,
       },
       {
         Header: "Glass",
         accessor: "glass",
         Cell: StatusBadge,
-        width: 80,
+        width: 60,
       },
       {
         Header: "Cap",
         accessor: "cap",
         Cell: StatusBadge,
-        width: 80,
+        width: 60,
       },
       {
         Header: "Box",
         accessor: "box",
         Cell: StatusBadge,
-        width: 80,
+        width: 60,
       },
       {
         Header: "Pump",
         accessor: "pump",
         Cell: StatusBadge,
-        width: 80,
+        width: 60,
       },
       {
         Header: "Deco",
         accessor: "decoration",
         Cell: StatusBadge,
-        width: 80,
+        width: 60,
       },
       {
         Header: "History",
         accessor: "history",
         Cell: ({ row }) => (
           <div className="flex justify-center">
-            <button 
-              className="flex items-center justify-center p-2 bg-amber-700 rounded-lg text-white hover:bg-orange-500 transition-colors duration-200 shadow-sm"
+            <button
+              className="flex items-center justify-center cursor-pointer p-1.5 bg-amber-700 rounded-sm text-white hover:bg-orange-500 transition-colors duration-200 shadow-sm"
               onClick={() => handleViewHistory(row.original)}
             >
-              <TbTimelineEvent size={18} />
+              <TbTimelineEvent size={15} />
             </button>
           </div>
         ),
-        width: 80,
+        width: 60,
       },
       {
         Header: "View",
         accessor: "f",
         Cell: ({ row }) => (
           <div className="flex justify-center">
-            <button 
-              className="flex items-center justify-center p-2 bg-orange-400 rounded-lg text-white hover:bg-orange-500 transition-colors duration-200 shadow-sm"
+            <button
+              className="flex items-center justify-center cursor-pointer p-1.5 bg-orange-600 rounded-sm text-white hover:bg-orange-500 transition-colors duration-200 shadow-sm"
               onClick={() => handleView(row.original)}
             >
-              <Eye size={18} />
+              <Eye size={16} />
             </button>
           </div>
         ),
-        width: 50,
+        width: 60,
       },
       {
         Header: "Edit",
         accessor: "edit",
         Cell: ({ row }) => (
           <div className="flex justify-center">
-            <button 
-              className="flex items-center justify-center p-2 bg-orange-600 rounded-lg text-white hover:bg-orange-500 transition-colors duration-200 shadow-sm"
-              onClick={() => console.log('Edit clicked')}
+            <button
+              className="flex items-center cursor-pointer justify-center p-1.5 bg-orange-600 rounded-sm text-white hover:bg-orange-500 transition-colors duration-200 shadow-sm"
+              onClick={() => handleEditOrder(row.original)}
             >
-              <FiEdit size={18} />
+              <FiEdit size={16} />
             </button>
           </div>
         ),
-        width: 50,
+        width: 60,
+      },
+      {
+        Header: "Delete",
+        accessor: "delete",
+        Cell: ({ row }) => (
+          <div className="flex justify-center">
+            <button
+              className="flex items-center cursor-pointer justify-center p-1.5 bg-orange-700 rounded-sm text-white hover:bg-orange-500 transition-colors duration-200 shadow-sm"
+              onClick={() => alert('order deleted')}
+            >
+             <MdDeleteOutline size={16}/>
+            </button>
+          </div>
+        ),
+        width: 60,
       },
     ],
     []
@@ -361,23 +395,23 @@ const Table = () => {
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-3">
-          <button onClick={() => setCreateOrder(true)} className="mt-2 sm:mt-0  bg-[#FF3333] text-white  flex items-center gap-2 px-3 py-1.5 rounded-lg shadow-md transition-colors duration-200 font-medium  hover:bg-orange-600 hover:text-white">
+          <button onClick={() => setCreateOrder(true)} className="mt-2 sm:mt-0 cursor-pointer bg-orange-700 text-white  flex items-center gap-2 px-3 py-1.5 rounded-sm shadow-md transition-colors duration-200 font-medium  hover:bg-red-900 hover:text-white">
             <Plus size={16} /> Create Order
           </button>
-          <ConnectionStatus />
+
         </div>
 
-        <div className='flex items-center gap-8'>
+        <div className='flex items-center gap-3'>
           <div className="relative">
             <input
               type="text"
               placeholder="Search..."
               value={filterInput}
-              className="px-4 py-2 pr-10 border border-[#FFD7BC] rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF6900] focus:border-[#FF6900] font-inter text-gray-700"
+              className="px-3 py-1 pr-10 border-1 border-[#c57138] rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF6900] focus:border-[#FF6900] font-inter text-gray-700"
               onChange={handleFilterChange}
             />
             <svg
-              className="w-5 h-5 absolute right-3 top-3 text-[#FF6900]"
+              className="w-5 h-5 absolute right-3 top-1.5 text-[#FF6900]"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -391,9 +425,9 @@ const Table = () => {
               ></path>
             </svg>
           </div>
-          <button className="flex items-center justify-center gap-2 bg-[#6B7499] hover:bg-gray-500 text-white py-2 px-4 rounded-lg shadow-md transition-colors duration-200">
-            <BsFiletypeCsv size={20} />
-            <span>Download CSV</span>
+          <button className="flex items-center cursor-pointer justify-center gap-1 bg-[#6B7499] hover:bg-gray-500 text-white py-2 px-4 rounded-sm shadow-md transition-colors duration-200">
+            <FaDownload size={18} />
+
           </button>
         </div>
       </div>
@@ -416,16 +450,21 @@ const Table = () => {
               >
                 <thead className="sticky top-0 z-10">
                   {headerGroups.map((headerGroup, idx) => (
-                    <tr {...headerGroup.getHeaderGroupProps()} key={idx}>
+                    <tr
+                      {...headerGroup.getHeaderGroupProps()}
+                      key={idx}
+                      className="bg-gradient-to-r from-[#993300] via-[#FF6600] to-[#FFB84D]"
+
+
+                    >
                       {headerGroup.headers.map((column, colIdx) => {
                         const isFirstColumn = colIdx === 0;
                         const isLastColumn = colIdx === headerGroup.headers.length - 1;
 
-                        let headerClass = "px-3 py-3 text-center font-bold text-sm text-white bg-[#FF6600]";
+                        let headerClass = "px-3 py-3 text-center font-bold text-sm text-white bg-transparent";
 
-                       
-                        headerClass += ` ${isFirstColumn ? 'rounded-tl-lg' : ''}
-                        ${isLastColumn ? 'rounded-tr-lg' : ''}`;
+                        headerClass += ` ${isFirstColumn ? 'rounded-tl-lg' : ''} ${isLastColumn ? 'rounded-tr-lg' : ''
+                          }`;
 
                         return (
                           <th
@@ -435,7 +474,7 @@ const Table = () => {
                             style={{
                               width: column.width,
                               minWidth: column.width,
-                              overflow: 'hidden'
+                              overflow: 'hidden',
                             }}
                           >
                             {column.render('Header')}
@@ -449,12 +488,17 @@ const Table = () => {
                   ))}
                 </thead>
 
+
                 <tbody {...getTableBodyProps()} className="bg-white divide-y divide-[#FFDFC8]">
                   {page.map((row, idx) => {
                     prepareRow(row);
                     const isLastRow = idx === page.length - 1;
                     // Apply alternating row colors for better readability
-                    const rowBgColor = idx % 2 === 0 ? 'bg-white' : 'bg-[#FFF0E6]';
+                    const rowBgColor =
+                      idx % 2 === 0
+                        ? 'bg-gradient-to-r from-[#FFFFFF] via-[#FFF5EC] to-[#FFEEE0]'
+                        : 'bg-gradient-to-r from-[#FFF0E6] via-[#FFDAB3] to-[#FFE6CC]';
+
 
                     return (
                       <tr {...row.getRowProps()} className={`${rowBgColor} hover:bg-[#FFF0E6] transition-colors duration-150`} key={idx}>
@@ -473,7 +517,7 @@ const Table = () => {
                             cellClass += 'font-medium ';
 
                             // Custom styles for different status values and percentages
-                            if (String(cell.value).includes("40%")) {
+                            if (String(cell.value).includes("60%")) {
                               cellClass += 'text-[#FF6900] ';
                             } else if (String(cell.value).includes("20%")) {
                               cellClass += 'text-[#FF9A56] ';
@@ -600,6 +644,7 @@ const Table = () => {
       {showModal && <ViewDispatcherOrderDetails orders={selectedOrder} onClose={handleClose} />}
       {createOrder && <CreateOrder onClose={handleClose} onCreateOrder={handleCreateOrder} />}
       {showTimeline && <OrderActivity onClose={handleClose} orderData={selectedOrder} />}
+      {editOrder && <EditDispatcherOrder onClose={handleClose} onSave={handleSaveData}  user={user} orderData={selectedOrder} />}
     </div>
   );
 };

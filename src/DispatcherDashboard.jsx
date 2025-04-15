@@ -7,6 +7,8 @@ import { FaCheck } from "react-icons/fa";
 import ConnectionStatus from './components/ConnectionStatus';
 import { FaPowerOff } from "react-icons/fa";
 import { Toaster } from 'react-hot-toast';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const DispatcherDashboard = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -112,7 +114,8 @@ const DispatcherDashboard = () => {
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
-        <Toaster position="bottom-center" reverseOrder={false} />
+        <Toaster position="top-center" reverseOrder={false} className="mt-6" />
+        <ToastContainer />
       {!isMobile && (
         <div
           className={`bg-[url('./bg2.jpg')] bg-cover bg-center text-white flex flex-col transition-all duration-300 

@@ -397,7 +397,7 @@ const CreateOrder = ({ onClose, onCreateOrder }) => {
                                   {/* Dropdown */}
                                   <div className="relative">
                                     {isDropdownVisible === index && (
-                                      <div className="absolute z-50 w-full mt-1 min-w-[400px] bg-white shadow-xl max-h-60 rounded-md py-1 text-sm overflow-auto border border-orange-200">
+                                      <div className="absolute z-999 w-full mt-1 min-w-[400px] bg-white shadow-xl max-h-60 rounded-md py-1 text-sm overflow-auto border border-orange-200">
                                         {filteredGlassData.length > 0 ? (
                                           filteredGlassData.map((glass, idx) => (
                                             <div

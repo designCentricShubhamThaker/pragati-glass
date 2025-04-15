@@ -14,7 +14,6 @@ export const SocketProvider = ({ children }) => {
   const [lastPing, setLastPing] = useState(null);
 
   useEffect(() => {
-    console.log('Complete user object:', user);
     
     if (!user || !user.role) {
       console.log('No user role available for socket connection');
@@ -93,7 +92,6 @@ export const SocketProvider = ({ children }) => {
 
     setSocket(socketInstance);
     return () => {
-      console.log('🧹 Cleaning up socket connection');
       socketInstance.disconnect();
     };
   }, [user]);
@@ -103,7 +101,6 @@ export const SocketProvider = ({ children }) => {
       const startTime = Date.now();
       socket.emit('ping', (response) => {
         const latency = Date.now() - startTime;
-        // console.log(`📡 Ping response: ${latency}ms`, response);
         setLastPing({ time: response.time, latency });
       });
     }
@@ -120,8 +117,7 @@ export const SocketProvider = ({ children }) => {
   const notifyOrderUpdate = useCallback((updatedOrder) => {
     if (socket && isConnected) {
       const teamType = user.teamType || user.team || 'unknown';
-      console.log(`📤 Sending order update via socket from ${teamType} team:`, updatedOrder);
-      
+     
       socket.emit('order-update', {
         order: updatedOrder,
         teamType: teamType,
@@ -154,7 +150,6 @@ export const SocketProvider = ({ children }) => {
       }
     };
 
-    // Listen for the custom event dispatched in your updateLocalStorageOrders function
     window.addEventListener('localStorageUpdated', handleLocalStorageUpdate);
     
     return () => {
@@ -167,7 +162,7 @@ export const SocketProvider = ({ children }) => {
     isConnected, 
     connectedUsers, 
     lastPing,
-    notifyOrderUpdate // Expose the function to allow manual notifications
+    notifyOrderUpdate 
   };
 
   return <SocketContext.Provider value={contextValue}>{children}</SocketContext.Provider>;

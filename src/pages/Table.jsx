@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTable, useGlobalFilter, useSortBy, usePagination } from 'react-table';
 import { Eye, Plus, Check } from 'lucide-react';
 import { FiEdit } from "react-icons/fi";
-import {  toast } from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 import { TbTimelineEvent } from "react-icons/tb";
 import axios from 'axios';
 import CreateOrder from '../child-components/CreateOrder';
@@ -13,6 +13,7 @@ import {
   setupLocalStorageSync,
   updateLocalStorageOrders,
   getOrdersFromLocalStorage,
+  handleDeleteOrder,
 } from '../utils/LocalStorageUtils.jsx';
 import { useSocket } from '../context/SocketContext.jsx';
 import { FaDownload } from 'react-icons/fa';
@@ -35,7 +36,7 @@ function customGlobalFilter(rows, columnIds, filterValue) {
 const Table = () => {
   const [showModal, setShowModal] = useState(false);
   const [createOrder, setCreateOrder] = useState(false);
-  const [editOrder,setEditOrder] = useState(false)
+  const [editOrder, setEditOrder] = useState(false)
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,7 +78,7 @@ const Table = () => {
     }
   };
 
-  const handleSaveData = ()=>{
+  const handleSaveData = () => {
     console.log('data updatedd')
   }
 
@@ -243,7 +244,7 @@ const Table = () => {
               </div>
             </div>
             <span
-            className={`text-sm font-semibold text-red-800`}
+              className={`text-sm font-semibold text-red-800`}
             >
               {value.toFixed(0)}%
             </span>
@@ -329,18 +330,35 @@ const Table = () => {
       {
         Header: "Delete",
         accessor: "delete",
-        Cell: ({ row }) => (
-          <div className="flex justify-center">
-            <button
-              className="flex items-center cursor-pointer justify-center p-1.5 bg-orange-700 rounded-sm text-white hover:bg-orange-500 transition-colors duration-200 shadow-sm"
-              onClick={() => alert('order deleted')}
-            >
-             <MdDeleteOutline size={16}/>
-            </button>
-          </div>
-        ),
+        Cell: ({ row }) => {
+          const order = row.original;
+          console.log(order);
+
+          return (
+            <div className="flex justify-center">
+              <button
+                className="flex items-center cursor-pointer justify-center p-1.5 bg-orange-700 rounded-sm text-white hover:bg-orange-500 transition-colors duration-200 shadow-sm"
+                onClick={() => handleDeleteOrder(
+                  user,
+                  order.orderDetails?.order_number, // 👈 use nested path safely
+                  () => {
+                    setOrders(prevOrders =>
+                      prevOrders.filter(o => o.orderDetails?.order_number !== order.orderDetails?.order_number)
+                    );
+                  },
+                  (errorMessage) => {
+                    console.error(`Failed to delete order: ${errorMessage}`);
+                  }
+                )}
+                aria-label="Delete order"
+              >
+                <MdDeleteOutline size={16} />
+              </button>
+            </div >
+          );
+        },
         width: 60,
-      },
+      }
     ],
     []
   );
@@ -644,7 +662,7 @@ const Table = () => {
       {showModal && <ViewDispatcherOrderDetails orders={selectedOrder} onClose={handleClose} />}
       {createOrder && <CreateOrder onClose={handleClose} onCreateOrder={handleCreateOrder} />}
       {showTimeline && <OrderActivity onClose={handleClose} orderData={selectedOrder} />}
-      {editOrder && <EditDispatcherOrder onClose={handleClose} onSave={handleSaveData}  user={user} orderData={selectedOrder} />}
+      {editOrder && <EditDispatcherOrder onClose={handleClose} onSave={handleSaveData} user={user} orderData={selectedOrder} />}
     </div>
   );
 };
